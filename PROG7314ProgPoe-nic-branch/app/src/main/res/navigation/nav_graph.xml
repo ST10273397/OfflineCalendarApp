@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/nav_dashboard">
+
+    <!-- Dashboard -->
+    <fragment
+        android:id="@+id/nav_dashboard"
+        android:name="com.example.prog7314progpoe.ui.dashboard.DashboardFragment"
+        android:label="@string/nav_dashboard" />
+
+    <!-- Calendars (month grid) -->
+    <fragment
+        android:id="@+id/nav_calendars"
+        android:name="com.example.prog7314progpoe.ui.calendarview.CalendarsFragment"
+        android:label="@string/nav_calendars" />
+
+    <!-- Custom calendars list -->
+    <fragment
+        android:id="@+id/nav_custom"
+        android:name="com.example.prog7314progpoe.ui.custom.list.CalendarListFragment"
+        android:label="@string/title_custom" />
+
+    <!-- Sharing host with two tabs: Mine / Invites -->
+    <fragment
+        android:id="@+id/nav_shared"
+        android:name="com.example.prog7314progpoe.ui.sharing.SharingHostFragment"
+        android:label="@string/title_shared" />
+
+    <fragment
+        android:id="@+id/shareCalendarDetailFragment"
+        android:name="com.example.prog7314progpoe.ui.sharing.ShareCalendarDetailFragment"
+        android:label="Calendar details">
+        <argument
+            android:name="calendarId"
+            app:argType="string" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/inviteDetailFragment"
+        android:name="com.example.prog7314progpoe.ui.sharing.InviteDetailFragment"
+        android:label="Invite details" />
+
+
+
+
+    <!-- Settings -->
+    <fragment
+        android:id="@+id/nav_settings"
+        android:name="com.example.prog7314progpoe.ui.settings.SettingsFragment"
+        android:label="@string/nav_settings" />
+</navigation>

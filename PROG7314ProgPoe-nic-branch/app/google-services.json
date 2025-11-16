@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "177050734117",
+    "firebase_url": "https://chronosync-f3425-default-rtdb.europe-west1.firebasedatabase.app",
+    "project_id": "chronosync-f3425",
+    "storage_bucket": "chronosync-f3425.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:177050734117:android:d1856753807a58efa839cc",
+        "android_client_info": {
+          "package_name": "com.example.prog7314progpoe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "177050734117-pfgb9l3lk137a9f6t6q0n4pfdl17j3sr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.prog7314progpoe",
+            "certificate_hash": "0d349d6e4da606f05fb85857f77842b0660a3a75"
+          }
+        },
+        {
+          "client_id": "177050734117-oc6dg5e9getmahl4dil2ecq3sl1hruko.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJMGBZI39xEioJokNJgwxskFSWNkmadgI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "177050734117-oc6dg5e9getmahl4dil2ecq3sl1hruko.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
