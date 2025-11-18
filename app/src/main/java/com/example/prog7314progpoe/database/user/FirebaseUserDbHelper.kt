@@ -54,18 +54,25 @@ object FirebaseUserDbHelper {
 
 
     fun loginUser(
-        email: String,
-        password: String,
+        email: String?,
+        password: String?,
         onComplete: (Boolean, String) -> Unit
     ) {
-        val cleanEmail = email.trim().lowercase()
+        val cleanEmail = email?.trim()?.lowercase().orEmpty()
+        val cleanPassword = password?.trim().orEmpty()
 
-        auth.signInWithEmailAndPassword(cleanEmail, password)
+        if (cleanEmail.isBlank() || cleanPassword.isBlank()) {
+            onComplete(false, "Missing or invalid credentials")
+            return
+        }
+
+        auth.signInWithEmailAndPassword(cleanEmail, cleanPassword)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) onComplete(true, "Login successful")
                 else onComplete(false, "Login failed: ${task.exception?.message}")
             }
     }
+
 
 
     fun getUser(userId: String, callback: (UserModel?) -> Unit) {

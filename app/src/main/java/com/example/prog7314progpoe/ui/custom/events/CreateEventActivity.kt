@@ -207,7 +207,7 @@ class CreateEventActivity : AppCompatActivity() {
         val desc = descEt.text.toString().trim()
 
         val event = HolidayModel(
-            holidayId = null,
+            holidayId = "",
             name = title,
             desc = desc,
             date = HolidayModel.DateInfo(date.format(dateFormat)),
@@ -263,7 +263,7 @@ class CreateEventActivity : AppCompatActivity() {
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(calSnap: DataSnapshot) {
                                     calSnap.getValue(CalendarModel::class.java)?.let {
-                                        it.calendarId = calSnap.key
+                                        it.calendarId = calSnap.key.toString()
                                         calendarList.add(it)
                                     }
                                     if (--remaining == 0) {

@@ -121,7 +121,7 @@ class EditCalendarActivity : AppCompatActivity() {
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(calSnap: DataSnapshot) {
                                     calSnap.getValue(CalendarModel::class.java)?.let { cal ->
-                                        cal.calendarId = calSnap.key
+                                        cal.calendarId = calSnap.key.toString()
                                         calendarList.add(cal)
                                     }
                                     if (--remaining == 0) updateSpinner()

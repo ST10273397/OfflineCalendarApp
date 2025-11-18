@@ -6,6 +6,7 @@ On success it takes the user back to the calendar details
 
 package com.example.prog7314progpoe.ui.custom.edit
 
+import android.os.Build
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
@@ -14,6 +15,7 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import com.example.prog7314progpoe.R
 import com.example.prog7314progpoe.database.calendar.CalendarModel
@@ -50,6 +52,7 @@ class EditHolidayActivity : AppCompatActivity() {
     private var selectedCalendarId: String? = null
     private var selectedHolidayId: String? = null
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_holiday)
@@ -160,7 +163,7 @@ class EditHolidayActivity : AppCompatActivity() {
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(calSnap: DataSnapshot) {
                                     calSnap.getValue(CalendarModel::class.java)?.let { cal ->
-                                        cal.calendarId = calSnap.key
+                                        cal.calendarId = calSnap.key.toString()
                                         calendarList.add(cal)
                                     }
                                     if (--remaining == 0) updateCalendarSpinner()
@@ -198,7 +201,7 @@ class EditHolidayActivity : AppCompatActivity() {
                     snap.children.forEach { hSnap ->
                         val h = hSnap.getValue(HolidayModel::class.java)
                         if (h != null) {
-                            h.holidayId = hSnap.key
+                            h.holidayId = hSnap.key.toString()
                             holidayList.add(h)
                         }
                     }
@@ -229,6 +232,7 @@ class EditHolidayActivity : AppCompatActivity() {
     // Save
     // -------------------------
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun saveEdits() {
         val calId = selectedCalendarId
         val holId = selectedHolidayId

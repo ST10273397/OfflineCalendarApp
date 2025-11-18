@@ -4,10 +4,12 @@ import android.app.AlertDialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Rect
+import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.InputType
 import android.text.TextWatcher
+import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
@@ -20,6 +22,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isVisible
@@ -32,8 +35,11 @@ import com.example.prog7314progpoe.api.ApiConfig
 import com.example.prog7314progpoe.api.Country
 import com.example.prog7314progpoe.api.CountryResponse
 import com.example.prog7314progpoe.api.HolidayRepository
+import com.example.prog7314progpoe.database.calendar.CustomCalendarRepository
 import com.example.prog7314progpoe.database.calendar.FirebaseCalendarDbHelper
 import com.example.prog7314progpoe.database.holidays.FirebaseHolidayDbHelper
+import com.example.prog7314progpoe.database.holidays.HolidayModel
+import com.example.prog7314progpoe.offline.OfflineManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CompletableDeferred
@@ -49,6 +55,7 @@ import retrofit2.Response
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import com.example.prog7314progpoe.offline.SessionManager
 
 //CALENDAR FRAGMENT - monthly grid with pickers and a day card
 //-----------------------------------------------------------------------------------------------
@@ -56,7 +63,9 @@ class CalendarsFragment : Fragment() {
 
     //STATE - month and chosen sources
     //-----------------------------------------------------------------------------------------------
+    @RequiresApi(Build.VERSION_CODES.O)
     private var currentMonth: YearMonth = YearMonth.now() // which month we show
+    @RequiresApi(Build.VERSION_CODES.O)
     private var selectedDay: LocalDate = LocalDate.now() // selected day for details
 
     private val activeCountryIsos = mutableSetOf<String>() // public holiday country isos
@@ -89,7 +98,10 @@ class CalendarsFragment : Fragment() {
     // PER-USER PREFS (matches DashboardFragment)
     //-----------------------------------------------------------------------------------------------
     private fun userPrefs() = requireContext()
-        .getSharedPreferences("dashboard_slots_${FirebaseAuth.getInstance().currentUser?.uid ?: "guest"}", Context.MODE_PRIVATE)
+        .getSharedPreferences(
+            "dashboard_slots_${sessionManager.getCurrentUserId() ?: "guest"}",
+            Context.MODE_PRIVATE
+        )
     //-----------------------------------------------------------------------------------------------
 
     //REPO - cache first access
@@ -109,12 +121,19 @@ class CalendarsFragment : Fragment() {
     private enum class SourceKind { PUBLIC, CUSTOM } // two kinds
     //-----------------------------------------------------------------------------------------------
 
+    private val customCalRepo by lazy {
+        CustomCalendarRepository(requireContext())
+    }
+
+    private lateinit var sessionManager: SessionManager
+
     //LIFECYCLE - inflate and wire
     //-----------------------------------------------------------------------------------------------
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         return inflater.inflate(R.layout.fragment_calendars_month, container, false) // inflate layout
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         //BIND VIEWS - grab handles
         //-----------------------------------------------------------------------------------------------
@@ -128,6 +147,7 @@ class CalendarsFragment : Fragment() {
         dayCardTitle = view.findViewById(R.id.dayCardTitle) // card title
         dayCardList = view.findViewById(R.id.dayCardList) // card list
         emptyDayText = view.findViewById(R.id.emptyDayText) // empty text
+        sessionManager = SessionManager(requireContext())
         //-----------------------------------------------------------------------------------------------
 
         //BOTTOM INSET PADDING - keep the day card above the bottom nav
@@ -188,6 +208,7 @@ class CalendarsFragment : Fragment() {
 
     //DAY CLICK - select and show details
     //-----------------------------------------------------------------------------------------------
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun onDayClicked(day: LocalDate) {
         selectedDay = day
         renderDayCard()
@@ -197,6 +218,7 @@ class CalendarsFragment : Fragment() {
 
     //REFRESH MONTH - rebuild grid load events and render card
     //-----------------------------------------------------------------------------------------------
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun refreshMonth() {
         txtMonth.text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
         renderGrid()
@@ -207,6 +229,7 @@ class CalendarsFragment : Fragment() {
 
     //GRID RENDER - compute full weeks with lead and trail days
     //-----------------------------------------------------------------------------------------------
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun renderGrid() {
         val firstOfMonth = currentMonth.atDay(1)
         val firstDow = firstOfMonth.dayOfWeek.value % 7 // sunday index as 0
@@ -229,63 +252,117 @@ class CalendarsFragment : Fragment() {
 
     //FETCH EVENTS - fill monthEvents map from active sources
     //-----------------------------------------------------------------------------------------------
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun fetchMonthEvents() {
         monthEvents.clear()
-
         val start = currentMonth.atDay(1)
         val end = currentMonth.atEndOfMonth()
         val yearList = listOf(start.year, start.year + 1)
+        val offlineManager = OfflineManager(requireContext())
 
         uiScope.launch {
-            // PUBLIC HOLIDAYS
-            for (iso in activeCountryIsos) {
-                for (y in yearList) {
-                    try {
-                        val resp = withContext(Dispatchers.IO) { repo.getHolidays(iso, y) }
-                        val hols = resp.response?.holidays ?: emptyList()
-                        hols.forEach { h ->
-                            val isoDate = h.date?.iso ?: return@forEach
-                            val d = runCatching { LocalDate.parse(isoDate.substring(0, 10)) }.getOrNull() ?: return@forEach
-                            if (!d.isBefore(start) && !d.isAfter(end)) {
-                                val title = h.name ?: "Holiday"
-                                val label = resolveCountryName(iso)
-                                monthEvents.getOrPut(d) { mutableListOf() }
-                                    .add(EventItem(d, title, label, SourceKind.PUBLIC))
-                            }
-                        }
-                    } catch (_: Exception) { /* ignore */ }
-                }
-            }
+            try {
+                val isOnline = offlineManager.isOnline()
 
-            // CUSTOM CALENDARS
-            for (cid in activeCustomIds) {
-                val latch = CompletableDeferred<Unit>()
-                FirebaseHolidayDbHelper.getAllHolidays(cid) { list ->
+                if (!isOnline) {
+                    Toast.makeText(
+                        requireContext(),
+                        "Offline mode - showing cached events",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                // **PUBLIC HOLIDAYS (offline-first) - FIXED**
+                for (iso in activeCountryIsos) {
+                    // **CHANGE: Process years separately to avoid duplicates**
+                    val allHolidaysForCountry = mutableListOf<HolidayModel>()
+
+                    for (y in yearList) {
+                        try {
+                            val holidays = if (isOnline) {
+                                // Online: fetch from API
+                                val resp = withContext(Dispatchers.IO) {
+                                    repo.getHolidays(iso, y)
+                                }
+                                val hols = resp.response?.holidays ?: emptyList()
+
+                                // Cache for offline use
+                                offlineManager.savePublicHolidaysOffline(iso, y, hols)
+                                hols
+                            } else {
+                                // **FIXED: Offline - use cache with year filter**
+                                offlineManager.getOfflinePublicHolidays(iso, y)
+                            }
+
+                            allHolidaysForCountry.addAll(holidays)
+                        } catch (e: Exception) {
+                            Log.e("CalendarsFragment", "Error loading holidays for $iso/$y", e)
+                        }
+                    }
+
+                    // **FIXED: Process each holiday only once**
+                    allHolidaysForCountry.forEach { h ->
+                        val isoDate = h.date?.iso ?: return@forEach
+                        val d = runCatching {
+                            LocalDate.parse(isoDate.substring(0, 10))
+                        }.getOrNull() ?: return@forEach
+
+                        if (!d.isBefore(start) && !d.isAfter(end)) {
+                            val title = h.name ?: "Holiday"
+                            val label = resolveCountryName(iso)
+                            monthEvents.getOrPut(d) { mutableListOf() }
+                                .add(EventItem(d, title, label, SourceKind.PUBLIC))
+                        }
+                    }
+                }
+
+                // **CUSTOM CALENDARS (offline-first)**
+                for (cid in activeCustomIds) {
                     try {
-                        val label = customIdToName[cid] ?: cid // show nice title if we have it
+                        val list = if (isOnline) {
+                            // Online: fetch from Firebase
+                            customCalRepo.getHolidaysForCalendar(cid, forceRefresh = true)
+                        } else {
+                            // Offline: use cache
+                            offlineManager.getOfflineCustomHolidays(cid)
+                        }
+
+                        val label = customIdToName[cid] ?: cid
                         list.forEach { h ->
-                            val title = tryField(h, "title") ?: tryField(h, "name") ?: "Event"
-                            val dateStr = tryDateIso(h) ?: tryField(h, "day")
-                            val d = runCatching { LocalDate.parse(dateStr ?: "") }.getOrNull()
+                            val title = h.name ?: "Event"
+                            val dateStr = h.date?.iso
+                            val d = runCatching {
+                                LocalDate.parse(dateStr ?: "")
+                            }.getOrNull()
+
                             if (d != null && !d.isBefore(start) && !d.isAfter(end)) {
                                 monthEvents.getOrPut(d) { mutableListOf() }
                                     .add(EventItem(d, title, label, SourceKind.CUSTOM))
                             }
                         }
-                    } catch (_: Exception) { /* ignore */ }
-                    finally { latch.complete(Unit) }
+                    } catch (e: Exception) {
+                        Log.e("CalendarsFragment", "Error loading custom calendar $cid", e)
+                    }
                 }
-                latch.await()
-            }
 
-            grid.adapter?.notifyDataSetChanged()
-            renderDayCard()
+                grid.adapter?.notifyDataSetChanged()
+                renderDayCard()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    requireContext(),
+                    "Error loading events: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                grid.adapter?.notifyDataSetChanged()
+                renderDayCard()
+            }
         }
     }
     //-----------------------------------------------------------------------------------------------
 
     //DAY CARD - show all events for the selected day
     //-----------------------------------------------------------------------------------------------
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun renderDayCard() {
         val items = monthEvents[selectedDay].orEmpty()
         dayCardTitle.text = selectedDay.format(DateTimeFormatter.ofPattern("EEE, dd MMM"))
@@ -305,6 +382,7 @@ class CalendarsFragment : Fragment() {
 
     //PICK SINGLE - choose one calendar from full list (public + user custom)
     //-----------------------------------------------------------------------------------------------
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun onPickSingleCalendar() {
         // Step 1: ensure country list
         val ensureCountries = CompletableDeferred<Unit>()
@@ -326,16 +404,30 @@ class CalendarsFragment : Fragment() {
 
         // Step 2: load user’s custom calendars from Firebase
         val ensureCustoms = CompletableDeferred<List<Pair<String, String>>>() // list of (id,title)
-        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        val uid = sessionManager.getCurrentUserId()
         if (uid == null) {
             ensureCustoms.complete(emptyList())
         } else {
-            FirebaseCalendarDbHelper.getUserCalendars(uid) { list ->
-                val rows = list
-                    .filter { !it.calendarId.isNullOrBlank() }
-                    .map { it.calendarId!! to (it.title ?: "(Untitled)") }
-                    .sortedBy { it.second.lowercase() }
-                ensureCustoms.complete(rows)
+            // Check if offline
+            if (!OfflineManager(requireContext()).isOnline()) {
+                // Use cached calendars
+                uiScope.launch {
+                    val cached = OfflineManager(requireContext()).getOfflineCalendars(uid)
+                    val rows = cached
+                        .filter { !it.calendarId.isNullOrBlank() }
+                        .map { it.calendarId!! to (it.title ?: "(Untitled)") }
+                        .sortedBy { it.second.lowercase() }
+                    ensureCustoms.complete(rows)
+                }
+            } else {
+                // Fetch from Firebase
+                FirebaseCalendarDbHelper.getUserCalendars(uid) { list ->
+                    val rows = list
+                        .filter { !it.calendarId.isNullOrBlank() }
+                        .map { it.calendarId!! to (it.title ?: "(Untitled)") }
+                        .sortedBy { it.second.lowercase() }
+                    ensureCustoms.complete(rows)
+                }
             }
         }
 
@@ -396,6 +488,7 @@ class CalendarsFragment : Fragment() {
 
     //PICK FROM DASHBOARD - choose multiple saved slots
     //-----------------------------------------------------------------------------------------------
+    @RequiresApi(Build.VERSION_CODES.O)
     private fun onPickFromDashboard() {
         val slots = readDashboardSlots()
         if (slots.isEmpty()) {
@@ -505,6 +598,7 @@ class CalendarsFragment : Fragment() {
             return DayVH(v)
         }
 
+        @RequiresApi(Build.VERSION_CODES.O)
         override fun onBindViewHolder(holder: DayVH, position: Int) {
             holder.bind(days[position])
         }
@@ -516,6 +610,7 @@ class CalendarsFragment : Fragment() {
         private val txtDay: TextView = v.findViewById(R.id.txtDay)
         private val txtTag: TextView = v.findViewById(R.id.txtTag)
 
+        @RequiresApi(Build.VERSION_CODES.O)
         fun bind(day: LocalDate) {
             txtDay.text = day.dayOfMonth.toString()
 
@@ -670,5 +765,23 @@ class CalendarsFragment : Fragment() {
         }
     }
     //-----------------------------------------------------------------------------------------------
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onResume() {
+        super.onResume()
+
+        // Background sync without blocking UI
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        if (uid != null) {
+            uiScope.launch {
+                try {
+                    customCalRepo.syncFromFirebase(uid)
+                    fetchMonthEvents() // Refresh with latest data
+                } catch (e: Exception) {
+                    // Silently fail - UI already showing cached data
+                }
+            }
+        }
+    }
 
 }

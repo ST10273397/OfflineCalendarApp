@@ -1,6 +1,7 @@
 package com.example.prog7314progpoe.ui.reglogin
 
 import android.content.ContentValues
+import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -29,13 +30,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 import com.google.firebase.database.FirebaseDatabase
-import kotlinx.coroutines.launch
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
-import androidx.credentials.provider.BiometricPromptData
-import androidx.credentials.provider.BiometricPromptResult
-import com.example.prog7314progpoe.ui.reglogin.RegisterActivity
+import com.example.prog7314progpoe.database.user.FirebaseUserDbHelper
+import com.example.prog7314progpoe.offline.OfflineManager
+import com.example.prog7314progpoe.offline.SessionManager
 import java.util.concurrent.Executor
 
 class AuthActivity : AppCompatActivity() {
@@ -69,6 +69,8 @@ class AuthActivity : AppCompatActivity() {
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
 
+    private lateinit var sessionManager: SessionManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
 
         //SEGMENT theme init - apply saved dark mode before UI inflates
@@ -87,6 +89,7 @@ class AuthActivity : AppCompatActivity() {
         //-----------------------------------------------------------------------------------------------
         auth = Firebase.auth // set firebase auth
         //-----------------------------------------------------------------------------------------------
+        sessionManager = SessionManager(this)
 
         //SEGMENT inflate UI - set the main layout
         //-----------------------------------------------------------------------------------------------
@@ -94,34 +97,101 @@ class AuthActivity : AppCompatActivity() {
         executor = ContextCompat.getMainExecutor(this)
         biometricPrompt = BiometricPrompt(this, executor,
             object : BiometricPrompt.AuthenticationCallback() {
-                override fun onAuthenticationError(errorCode: Int,
-                                                   errString: CharSequence) {
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
                     super.onAuthenticationError(errorCode, errString)
                     Toast.makeText(applicationContext,
-                        "Authentication error: $errString", Toast.LENGTH_SHORT)
-                        .show()
+                        "Authentication error: $errString", Toast.LENGTH_SHORT).show()
                 }
 
+                // In your biometric callback's onAuthenticationSucceeded:
+
                 override fun onAuthenticationSucceeded(
-                    result: BiometricPrompt.AuthenticationResult) {
+                    result: BiometricPrompt.AuthenticationResult
+                ) {
                     super.onAuthenticationSucceeded(result)
-                    Toast.makeText(
-                        applicationContext,
-                        "Authentication succeeded!", Toast.LENGTH_SHORT)
-                        .show()
-                    startActivity(Intent(this@AuthActivity, HomeActivity::class.java))
+
+                    lifecycleScope.launch {
+                        val offlineManager = OfflineManager(this@AuthActivity)
+                        val primaryUser = offlineManager.getPrimaryUser()
+
+                        if (primaryUser == null) {
+                            Toast.makeText(
+                                this@AuthActivity,
+                                "No biometric user configured. Please login normally first.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            return@launch
+                        }
+
+                        val email = primaryUser.email?.trim().orEmpty()
+                        val password = primaryUser.password?.trim().orEmpty()
+
+                        if (email.isBlank() || password.isBlank()) {
+                            Toast.makeText(
+                                this@AuthActivity,
+                                "Stored credentials invalid.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@launch
+                        }
+
+                        if (offlineManager.isOnline()) {
+                            // Online: Authenticate with Firebase
+                            FirebaseUserDbHelper.loginUser(email, password) { success, message ->
+                                if (success) {
+                                    // **SAVE SESSION**
+                                    sessionManager.saveSession(
+                                        userId = primaryUser.userId,
+                                        email = email,
+                                        isOffline = false
+                                    )
+
+                                    Toast.makeText(
+                                        this@AuthActivity,
+                                        "Logged in with biometrics",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+
+                                    lifecycleScope.launch {
+                                        offlineManager.syncDashboardToOffline(primaryUser.userId) { }
+                                    }
+                                    updateUI(auth.currentUser)
+                                } else {
+                                    Toast.makeText(
+                                        this@AuthActivity,
+                                        "Biometric login failed: $message",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        } else {
+                            // Offline: Use cached credentials
+                            // **SAVE SESSION FOR OFFLINE MODE**
+                            sessionManager.saveSession(
+                                userId = primaryUser.userId,
+                                email = email,
+                                isOffline = true
+                            )
+
+                            Toast.makeText(
+                                this@AuthActivity,
+                                "Offline mode - using biometrics",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            updateUIOffline(primaryUser)
+                        }
+                    }
                 }
 
                 override fun onAuthenticationFailed() {
                     super.onAuthenticationFailed()
-                    Toast.makeText(applicationContext, "Authentication failed",
-                        Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(applicationContext,
+                        "Authentication failed", Toast.LENGTH_SHORT).show()
                 }
             })
 
         promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Biometric login for my app")
+            .setTitle("Biometric login")
             .setSubtitle("Log in using your biometric credential")
             .setNegativeButtonText("Use account password")
             .build()
@@ -235,6 +305,16 @@ class AuthActivity : AppCompatActivity() {
             finish()
         } else {
             Log.d(ContentValues.TAG, "User is null, staying on LoginActivity")
+        }
+    }
+
+    private fun updateUIOffline(user: UserModel?) {
+        if (user != null) {
+            val intent = Intent(this, HomeActivity::class.java)
+            startActivity(intent)
+            finish()
+        }else{
+            Log.d(TAG, "User is null, staying on LoginActivity")
         }
     }
 

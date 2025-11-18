@@ -1,9 +1,3 @@
-/**
- * share invites fragment
- * shows calendars shared to the current user and lets them leave a calendar
- * uses user_calendars and calendars and users nodes
- */
-
 package com.example.prog7314progpoe.ui.sharing
 
 import android.os.Bundle
@@ -12,46 +6,37 @@ import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.prog7314progpoe.R
 import com.example.prog7314progpoe.database.calendar.CalendarModel
+import com.example.prog7314progpoe.database.calendar.FirebaseCalendarDbHelper
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 
 class ShareInvitesFragment : Fragment(R.layout.fragment_share_invites) {
 
-    //SEGMENT firebase
-    //-----------------------------------------------------------------------------------------------
     private val auth by lazy { FirebaseAuth.getInstance() }
     private val db by lazy { FirebaseDatabase.getInstance().reference }
-    //-----------------------------------------------------------------------------------------------
 
-    //SEGMENT views and adapter
-    //-----------------------------------------------------------------------------------------------
     private lateinit var rv: RecyclerView
     private lateinit var progress: ProgressBar
     private lateinit var tvEmpty: TextView
+
     private val adapter by lazy {
-        InviteListAdapter(
-            onOpen = { row ->
-                findNavController().navigate(
-                    R.id.inviteDetailFragment,
-                    InviteDetailFragment.args(row.calendarId)
-                )
+        ShareInvitesAdapter(
+            onAccept = { invite ->
+                acceptInvite(invite)
             },
-            onLeave = { row ->
-                leaveCalendar(row.calendarId)
+            onDecline = { invite ->
+                declineInvite(invite)
             }
         )
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //SEGMENT lifecycle - setup and load
-    //-----------------------------------------------------------------------------------------------
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         rv = view.findViewById(R.id.rvInvites)
         progress = view.findViewById(R.id.progress)
         tvEmpty = view.findViewById(R.id.tvEmpty)
@@ -59,13 +44,15 @@ class ShareInvitesFragment : Fragment(R.layout.fragment_share_invites) {
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.adapter = adapter
 
-        loadSharedToMe()
+        loadPendingInvites()
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //SEGMENT load - read user_calendars/<uid> then fetch calendars and filter not owned
-    //-----------------------------------------------------------------------------------------------
-    private fun loadSharedToMe() {
+    override fun onResume() {
+        super.onResume()
+        loadPendingInvites()
+    }
+
+    private fun loadPendingInvites() {
         val uid = auth.currentUser?.uid
         if (uid.isNullOrBlank()) {
             showEmpty("not signed in")
@@ -75,16 +62,17 @@ class ShareInvitesFragment : Fragment(R.layout.fragment_share_invites) {
         progress.visibility = View.VISIBLE
         tvEmpty.visibility = View.GONE
 
-        db.child("user_calendars").child(uid)
+        // Read from user_invites node
+        db.child("user_invites").child(uid)
             .addListenerForSingleValueEvent(object : ValueEventListener {
-                override fun onDataChange(keysSnap: DataSnapshot) {
-                    val ids = keysSnap.children.mapNotNull { it.key }
-                    if (ids.isEmpty()) {
+                override fun onDataChange(snap: DataSnapshot) {
+                    val calendarIds = snap.children.mapNotNull { it.key }
+                    if (calendarIds.isEmpty()) {
                         adapter.submitList(emptyList())
-                        showEmpty("no shared calendars")
+                        showEmpty("no pending invites")
                         return
                     }
-                    fetchCalendarsAndOwners(ids, uid)
+                    fetchInviteDetails(calendarIds)
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -94,90 +82,112 @@ class ShareInvitesFragment : Fragment(R.layout.fragment_share_invites) {
             })
     }
 
-    //SUB-SEGMENT hydrate calendars and owners
-    //-----------------------------------------------------------------------------------------------
-    private fun fetchCalendarsAndOwners(ids: List<String>, currentUid: String) {
-        val rows = mutableListOf<SharedToMeRow>()
-        var remaining = ids.size
+    private fun fetchInviteDetails(calendarIds: List<String>) {
+        val invites = mutableListOf<InviteRow>()
+        var remaining = calendarIds.size
 
-        ids.forEach { id ->
-            db.child("calendars").child(id)
+        calendarIds.forEach { calendarId ->
+            db.child("calendars").child(calendarId)
                 .addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(calSnap: DataSnapshot) {
-                        val m = calSnap.getValue(CalendarModel::class.java)
-                        if (m != null) {
-                            val ownerId = m.ownerId ?: ""
-                            val title = m.title ?: ""
-                            // only show if I am not the owner
-                            if (ownerId.isNotBlank() && ownerId != currentUid) {
-                                // fetch owner email then add row
-                                db.child("users").child(ownerId).child("email")
-                                    .addListenerForSingleValueEvent(object : ValueEventListener {
-                                        override fun onDataChange(emailSnap: DataSnapshot) {
-                                            val email = emailSnap.getValue(String::class.java) ?: "(owner)"
-                                            rows.add(SharedToMeRow(calendarId = id, title = title, ownerEmail = email))
-                                            if (--remaining == 0) finishList(rows)
+                        val calendar = calSnap.getValue(CalendarModel::class.java)
+                        if (calendar != null) {
+                            val ownerId = calendar.ownerId ?: ""
+
+                            //fetch email
+                            db.child("users").child(ownerId)
+                                .addListenerForSingleValueEvent(object : ValueEventListener {
+                                    override fun onDataChange(userSnap: DataSnapshot) {
+                                        val ownerEmail = userSnap.child("email").getValue(String::class.java) ?: "Unknown"
+
+                                        invites.add(InviteRow(
+                                            calendarId = calendarId,
+                                            title = calendar.title ?: "Untitled",
+                                            ownerEmail = ownerEmail
+                                        ))
+
+                                        if (--remaining == 0) {
+                                            progress.visibility = View.GONE
+                                            adapter.submitList(invites.sortedBy { it.title.lowercase() })
                                         }
-                                        override fun onCancelled(error: DatabaseError) {
-                                            if (--remaining == 0) finishList(rows)
+                                    }
+
+                                    override fun onCancelled(error: DatabaseError) {
+                                        if (--remaining == 0) {
+                                            progress.visibility = View.GONE
+                                            adapter.submitList(invites.sortedBy { it.title.lowercase() })
                                         }
-                                    })
-                                return
+                                    }
+                                })
+                        } else {
+                            if (--remaining == 0) {
+                                progress.visibility = View.GONE
+                                if (invites.isEmpty()) {
+                                    showEmpty("no pending invites")
+                                } else {
+                                    adapter.submitList(invites.sortedBy { it.title.lowercase() })
+                                }
                             }
                         }
-                        if (--remaining == 0) finishList(rows)
                     }
 
                     override fun onCancelled(error: DatabaseError) {
-                        if (--remaining == 0) finishList(rows)
+                        if (--remaining == 0) {
+                            progress.visibility = View.GONE
+                            showEmpty(error.message)
+                        }
                     }
                 })
         }
     }
 
-    //SUB-SEGMENT finish - update ui
-    //-----------------------------------------------------------------------------------------------
-    private fun finishList(rows: List<SharedToMeRow>) {
-        progress.visibility = View.GONE
-        if (rows.isEmpty()) {
-            adapter.submitList(emptyList())
-            tvEmpty.visibility = View.VISIBLE
-        } else {
-            adapter.submitList(rows.sortedBy { it.title.lowercase() })
-            tvEmpty.visibility = View.GONE
-        }
-    }
-    //-----------------------------------------------------------------------------------------------
+    private fun acceptInvite(invite: InviteRow) {
+        val uid = auth.currentUser?.uid ?: return
 
-    //SEGMENT leave - remove my link from sharedWith and user_calendars
-    //-----------------------------------------------------------------------------------------------
-    private fun leaveCalendar(calendarId: String) {
-        val uid = auth.currentUser?.uid
-        if (uid.isNullOrBlank()) {
-            Toast.makeText(requireContext(), "not signed in", Toast.LENGTH_SHORT).show()
-            return
-        }
-        val updates = hashMapOf<String, Any?>(
-            "calendars/$calendarId/sharedWith/$uid" to null,
-            "user_calendars/$uid/$calendarId" to null
-        )
-        db.updateChildren(updates).addOnCompleteListener { t ->
-            if (t.isSuccessful) {
-                Toast.makeText(requireContext(), "left calendar", Toast.LENGTH_SHORT).show()
-                loadSharedToMe()
-            } else {
-                Toast.makeText(requireContext(), t.exception?.localizedMessage ?: "leave failed", Toast.LENGTH_LONG).show()
+        progress.visibility = View.VISIBLE
+
+        FirebaseCalendarDbHelper.acceptInvite(
+            calendarId = invite.calendarId,
+            userId = uid,
+            onSuccess = {
+                Toast.makeText(requireContext(), "Invite accepted!", Toast.LENGTH_SHORT).show()
+                loadPendingInvites() // Refresh list
+            },
+            onError = { msg ->
+                progress.visibility = View.GONE
+                Toast.makeText(requireContext(), "Error: $msg", Toast.LENGTH_LONG).show()
             }
-        }
+        )
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //SUB-SEGMENT helper - show empty
-    //-----------------------------------------------------------------------------------------------
+    private fun declineInvite(invite: InviteRow) {
+        val uid = auth.currentUser?.uid ?: return
+
+        progress.visibility = View.VISIBLE
+
+        FirebaseCalendarDbHelper.declineInvite(
+            calendarId = invite.calendarId,
+            userId = uid,
+            onSuccess = {
+                Toast.makeText(requireContext(), "Invite declined", Toast.LENGTH_SHORT).show()
+                loadPendingInvites() // Refresh list
+            },
+            onError = { msg ->
+                progress.visibility = View.GONE
+                Toast.makeText(requireContext(), "Error: $msg", Toast.LENGTH_LONG).show()
+            }
+        )
+    }
+
     private fun showEmpty(msg: String) {
         progress.visibility = View.GONE
         tvEmpty.text = msg
         tvEmpty.visibility = View.VISIBLE
     }
-    //-----------------------------------------------------------------------------------------------
 }
+
+data class InviteRow(
+    val calendarId: String,
+    val title: String,
+    val ownerEmail: String
+)

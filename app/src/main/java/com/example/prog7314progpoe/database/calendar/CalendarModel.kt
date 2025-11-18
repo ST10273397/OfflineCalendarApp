@@ -6,7 +6,7 @@ import com.example.prog7314progpoe.database.holidays.HolidayModel
 
 @Entity(tableName = "Calendars")
 data class CalendarModel(
-    @PrimaryKey val calendarId: String? = null,
+    @PrimaryKey var calendarId: String,
     var title: String? = null,
     var description: String? = null,
     var ownerId: String? = null,
@@ -14,7 +14,7 @@ data class CalendarModel(
     var holidays: Map<String, HolidayModel>? = null
 )
 {
-    constructor() : this(null, null, null, null, null, null)
+    constructor() : this("", null, null, null, null, null)
 }
 
 // ← ADD THIS NEW DATA CLASS

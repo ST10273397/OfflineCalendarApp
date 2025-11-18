@@ -15,7 +15,7 @@ class SharingPagerAdapter(parent: Fragment) : FragmentStateAdapter(parent) {
     override fun createFragment(position: Int): Fragment {
         return when (position) {
             0 -> ShareMineFragment()           // Calendars I own
-            1 -> ShareInvitesFragment()        // Pending invites
+            1 -> ShareSharedWithMeFragment()// Pending invites
             2 -> ShareInvitesFragment()        // Pending invites
             else -> ShareMineFragment()
         }

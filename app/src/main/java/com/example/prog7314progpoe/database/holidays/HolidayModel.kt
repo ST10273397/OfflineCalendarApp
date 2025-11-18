@@ -1,5 +1,6 @@
 package com.example.prog7314progpoe.database.holidays
 
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -19,19 +20,24 @@ data class HolidayList(
 
 @Entity(tableName = "Holidays")
 data class HolidayModel(
-    @PrimaryKey val holidayId: String? = null, // Mapping to Firebase key
+    @PrimaryKey var holidayId: String, // Mapping to Firebase key
     var name: String? = null,
     var desc: String? = null,
+    @Embedded
     var date: DateInfo? = null,
     var dateStart: DateInfo? = null,  // Optional if holiday spans multiple days
     var dateEnd: DateInfo? = null,
     var timeStart: Long? = null,
     var timeEnd: Long? = null,
     var repeat: List<String>? = null, // Example: ["Daily", "Weekly", "Monthly", "Annually"]
-    var type: List<String>? = null    // Example: ["National holiday", "Religious"]
+    var type: List<String>? = null,    // Example: ["National holiday", "Religious"]
+    val country: String? = null,
+    val sourceId: String? = null,  // calendarId for custom, countryIso for public
+    val sourceType: String? = null, // "custom" or "public"
+    val cachedAt: Long? = null
 ) {
     constructor() : this(
-        null, null, null, null, null, null, null, null, null, null
+        "", null, null, null, null, null, null, null, null, null, null, null, null, null
     )
 
     data class DateInfo(

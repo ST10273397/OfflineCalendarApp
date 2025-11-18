@@ -9,7 +9,10 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.example.prog7314progpoe.R
+import com.example.prog7314progpoe.offline.SessionManager
+import com.example.prog7314progpoe.ui.reglogin.AuthActivity
 import com.example.prog7314progpoe.ui.reglogin.LoginActivity
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -17,6 +20,7 @@ import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
 import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
 
 class SettingsFragment : Fragment(R.layout.fragment_settings) {
 
@@ -25,6 +29,9 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
     private val prefs by lazy { requireContext().getSharedPreferences("app_prefs", Context.MODE_PRIVATE) } // store small flags
     private val auth by lazy { FirebaseAuth.getInstance() } // Firebase auth
     private val KEY_DARK_MODE = "dark_mode" //Start
+
+    private val sessionManager by lazy { SessionManager(requireContext()) }
+
     //-----------------------------------------------------------------------------------------------
 
     //SEGMENT lifecycle - wire up the UI
@@ -60,9 +67,8 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         //SUB-SEGMENT logout - clear session and go to login
         //-------------------------------------------------
         btnLogout.setOnClickListener {
-            auth.signOut() // sign out
+            logout()
             Toast.makeText(requireContext(), "Logged out", Toast.LENGTH_SHORT).show() //note
-            goToLoginClearTask() // clear back stack
         }
         //-------------------------------------------------
 
@@ -81,7 +87,7 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
                     user.delete().addOnCompleteListener { task ->
                         if (task.isSuccessful) {
                             Toast.makeText(requireContext(), "Account deleted", Toast.LENGTH_SHORT).show() // Start
-                            goToLoginClearTask() // back to login
+                            startActivity(Intent(requireContext(), AuthActivity::class.java)) // back to login
                         } else {
                             val msg = task.exception?.localizedMessage ?: "Delete failed"
                             // Firebase may require recent login for delete
@@ -114,12 +120,22 @@ class SettingsFragment : Fragment(R.layout.fragment_settings) {
         AppCompatDelegate.setDefaultNightMode(mode) // flip theme live
     }
 
-    private fun goToLoginClearTask() {
-        //Navigate to login, clear back stack
-        val i = Intent(requireContext(), LoginActivity::class.java) // intent
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK) // flags
-        startActivity(i) //start
-        requireActivity().finish() // close current
+    private fun logout() {
+        lifecycleScope.launch {
+            // Clear session
+            sessionManager.clearSession()
+
+            // Sign out from Firebase
+            FirebaseAuth.getInstance().signOut()
+
+            // Optionally: Clear local cache
+            // offlineManager.deleteUser(userId)
+
+            // Navigate back to login
+            val intent = Intent(requireContext(), AuthActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        }
     }
     //-----------------------------------------------------------------------------------------------
 

@@ -5,7 +5,10 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
     app:cardElevation="2dp"
-    app:cardCornerRadius="8dp">
+    app:cardCornerRadius="8dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -27,32 +30,18 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="Invited by owner@example.com"
+            android:text="Shared by owner@example.com"
             android:textSize="14sp"
             android:textColor="?attr/colorOnSurfaceVariant" />
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/tvPermissions"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:orientation="horizontal"
-            android:gravity="end">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnDecline"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Decline"
-                android:layout_marginEnd="8dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAccept"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Accept" />
-
-        </LinearLayout>
+            android:layout_marginTop="4dp"
+            android:text="Can Edit, Can Share"
+            android:textSize="12sp"
+            android:textColor="?attr/colorPrimary" />
 
     </LinearLayout>
 

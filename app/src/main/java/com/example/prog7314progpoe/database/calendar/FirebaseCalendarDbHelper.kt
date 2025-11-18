@@ -239,7 +239,7 @@ object FirebaseCalendarDbHelper {
                     db.child("calendars").child(id).get()
                         .addOnSuccessListener { calSnap ->
                             calSnap.getValue(CalendarModel::class.java)?.let {
-                                it.calendarId = calSnap.key
+                                it.calendarId = calSnap.key.toString()
                                 result.add(it)
                             }
                             remaining--

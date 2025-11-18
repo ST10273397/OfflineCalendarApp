@@ -42,6 +42,14 @@
         android:name="com.example.prog7314progpoe.ui.sharing.InviteDetailFragment"
         android:label="Invite details" />
 
+    <fragment
+        android:id="@+id/shareSharedWithMeDetailFragment"
+        android:name="com.example.prog7314progpoe.ui.sharing.ShareSharedWithMeDetailFragment"
+        android:label="Calendar Details">
+        <argument
+            android:name="calendarId"
+            app:argType="string" />
+    </fragment>
 
 
 
