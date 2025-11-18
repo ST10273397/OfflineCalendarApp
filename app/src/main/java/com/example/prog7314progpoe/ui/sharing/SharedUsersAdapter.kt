@@ -1,6 +1,6 @@
 /**
  * shared users adapter
- * shows a list of people who have access to the calendar with a remove button
+ * Shows a list of people who can access to the calendar with a remove button
  */
 
 package com.example.prog7314progpoe.ui.sharing
@@ -44,8 +44,19 @@ class SharedUsersAdapter(
         private val btnRemove = itemView.findViewById<MaterialButton>(R.id.btnRemove)
 
         fun bind(row: SharedUserRow) {
-            tvEmail.text = row.email
-            btnRemove.setOnClickListener { onRemove(row) }
+            tvEmail.text = if (row.isOwner) {
+                "${row.email} (Owner)"
+            } else {
+                row.email
+            }
+
+            // Hide remove button for owner
+            if (row.isOwner) {
+                btnRemove.visibility = View.GONE
+            } else {
+                btnRemove.visibility = View.VISIBLE
+                btnRemove.setOnClickListener { onRemove(row) }
+            }
         }
     }
 
@@ -61,5 +72,6 @@ class SharedUsersAdapter(
 //-----------------------------------------------------------------------------------------------
 data class SharedUserRow(
     val userId: String,
-    val email: String
+    val email: String,
+    val isOwner: Boolean = false
 )

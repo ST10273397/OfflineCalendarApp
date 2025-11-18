@@ -1,7 +1,7 @@
 /**
- * A form for adding a new event to the current calendar
- * the user fills in name, date, and type
- * Save adds it and returns to the calendar details
+ * A form for creating a new event in a selected calendar.
+ * The user enters the event name, date, start/end time, description, and repeat type.
+ * On save, the event is added to Firebase and the user is returned to the calendar details.
  */
 
 package com.example.prog7314progpoe.ui.custom.events
@@ -40,10 +40,9 @@ import java.time.format.DateTimeFormatter
 
 class CreateEventActivity : AppCompatActivity() {
 
+    // --- UI Elements ---
     private lateinit var calendarSpinner: Spinner
     private lateinit var repeatsSpinner: Spinner
-    private lateinit var db: DatabaseReference
-
     private lateinit var titleEt: EditText
     private lateinit var dateEt: EditText
     private lateinit var startEt: EditText
@@ -53,9 +52,12 @@ class CreateEventActivity : AppCompatActivity() {
     private lateinit var resetBtn: Button
     private lateinit var cancelBtn: Button
 
-    private val calendarList: MutableList<CalendarModel> = mutableListOf()
+    // --- Firebase & data ---
+    private lateinit var db: DatabaseReference
+    private val calendarList = mutableListOf<CalendarModel>()
     private var calendarsLoaded = false
 
+    // --- Temporary picked values ---
     private var pickedLocalDate: LocalDate? = null
     private var pickedStart: LocalTime? = null
     private var pickedEnd: LocalTime? = null
@@ -67,6 +69,7 @@ class CreateEventActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_create_event)
 
+        // Bind views
         calendarSpinner = findViewById(R.id.spn_calendar)
         repeatsSpinner = findViewById(R.id.spn_Repeats)
         titleEt = findViewById(R.id.et_EventTitle)
@@ -81,19 +84,18 @@ class CreateEventActivity : AppCompatActivity() {
         db = FirebaseDatabase.getInstance().reference
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
 
-        // Load calendars for this user
+        // Load user calendars from Firebase
         loadUserCalendars(uid)
 
-        // Repeats options
+        // Setup "Repeats" spinner
         val repeatOptions = listOf("None", "Daily", "Weekly", "Monthly", "Annually")
         repeatsSpinner.adapter =
             ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, repeatOptions)
 
-        // --- Date picker (no past dates) ---
+        // --- Date picker setup ---
         val constraints = CalendarConstraints.Builder()
             .setValidator(DateValidatorPointForward.from(MaterialDatePicker.todayInUtcMilliseconds()))
             .build()
-
         val datePicker = MaterialDatePicker.Builder.datePicker()
             .setTitleText("Pick date")
             .setCalendarConstraints(constraints)
@@ -106,12 +108,11 @@ class CreateEventActivity : AppCompatActivity() {
             dateEt.setText(ld.format(dateFormat))
         }
 
-        // --- Time pickers ---
+        // --- Time pickers setup ---
         val startPicker = MaterialTimePicker.Builder()
             .setTimeFormat(TimeFormat.CLOCK_24H)
             .setTitleText("Start time")
             .build()
-
         val endPicker = MaterialTimePicker.Builder()
             .setTimeFormat(TimeFormat.CLOCK_24H)
             .setTitleText("End time")
@@ -129,11 +130,13 @@ class CreateEventActivity : AppCompatActivity() {
             endEt.setText(pickedEnd!!.format(timeFormat))
         }
 
+        // --- Button listeners ---
         createBtn.setOnClickListener { createEvent() }
         resetBtn.setOnClickListener { resetFields() }
         cancelBtn.setOnClickListener { finish() }
     }
 
+    /** Clears all input fields and resets spinners */
     private fun resetFields() {
         titleEt.text.clear()
         dateEt.text.clear(); pickedLocalDate = null
@@ -143,47 +146,26 @@ class CreateEventActivity : AppCompatActivity() {
         repeatsSpinner.setSelection(0)
     }
 
+    /** Validates inputs and creates a new event in Firebase */
     private fun createEvent() {
         Log.d("CreateEvent", "Create tapped")
 
-        // Ensure calendars are loaded & selected
+        // Ensure calendars are loaded
         if (!calendarsLoaded || calendarList.isEmpty()) {
-            Toast.makeText(this, "Calendars are still loading. Try again in a second.", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Calendars are still loading. Try again shortly.", Toast.LENGTH_SHORT).show()
             return
         }
 
-        // validation
+        // --- Input validation ---
         val title = titleEt.text.toString().trim()
-        if (title.isEmpty()) {
-            titleEt.error = "Title required"
-            titleEt.requestFocus()
-            return
-        }
-        val date = pickedLocalDate ?: run {
-            dateEt.error = "Pick a date"
-            dateEt.requestFocus()
-            return
-        }
-        if (date.isBefore(LocalDate.now())) {
-            dateEt.error = "Date cannot be in the past"
-            dateEt.requestFocus()
-            return
-        }
-        val start = pickedStart ?: run {
-            startEt.error = "Pick start time"
-            startEt.requestFocus()
-            return
-        }
-        val end = pickedEnd ?: run {
-            endEt.error = "Pick end time"
-            endEt.requestFocus()
-            return
-        }
-        if (!end.isAfter(start)) {
-            endEt.error = "End must be after start"
-            endEt.requestFocus()
-            return
-        }
+        if (title.isEmpty()) { titleEt.error = "Title required"; titleEt.requestFocus(); return }
+
+        val date = pickedLocalDate ?: run { dateEt.error = "Pick a date"; dateEt.requestFocus(); return }
+        if (date.isBefore(LocalDate.now())) { dateEt.error = "Date cannot be in the past"; dateEt.requestFocus(); return }
+
+        val start = pickedStart ?: run { startEt.error = "Pick start time"; startEt.requestFocus(); return }
+        val end = pickedEnd ?: run { endEt.error = "Pick end time"; endEt.requestFocus(); return }
+        if (!end.isAfter(start)) { endEt.error = "End must be after start"; endEt.requestFocus(); return }
 
         val pos = calendarSpinner.selectedItemPosition
         if (pos !in calendarList.indices) {
@@ -198,11 +180,10 @@ class CreateEventActivity : AppCompatActivity() {
             return
         }
 
-        // Build payload
+        // --- Build timestamps for Firebase ---
         val zone = ZoneId.systemDefault()
         val startMillis = ZonedDateTime.of(date, start, zone).toInstant().toEpochMilli()
-        val endMillis   = ZonedDateTime.of(date, end,   zone).toInstant().toEpochMilli()
-
+        val endMillis   = ZonedDateTime.of(date, end, zone).toInstant().toEpochMilli()
         val repeatChoice = repeatsSpinner.selectedItem.toString()
         val desc = descEt.text.toString().trim()
 
@@ -217,10 +198,10 @@ class CreateEventActivity : AppCompatActivity() {
             type = listOf("General")
         )
 
-        // Prevent double taps during network
+        // Disable button to prevent double taps
         createBtn.isEnabled = false
 
-        // --- SAVE ---
+        // --- Save to Firebase ---
         FirebaseHolidayDbHelper.addHoliday(
             calId,
             event,
@@ -236,10 +217,9 @@ class CreateEventActivity : AppCompatActivity() {
                 Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
             }
         )
-
-
     }
 
+    /** Loads all calendars for the current user */
     private fun loadUserCalendars(userId: String) {
         calendarsLoaded = false
         db.child("user_calendars").child(userId)
@@ -266,16 +246,10 @@ class CreateEventActivity : AppCompatActivity() {
                                         it.calendarId = calSnap.key.toString()
                                         calendarList.add(it)
                                     }
-                                    if (--remaining == 0) {
-                                        calendarsLoaded = true
-                                        updateCalendarSpinner()
-                                    }
+                                    if (--remaining == 0) { calendarsLoaded = true; updateCalendarSpinner() }
                                 }
                                 override fun onCancelled(error: DatabaseError) {
-                                    if (--remaining == 0) {
-                                        calendarsLoaded = true
-                                        updateCalendarSpinner()
-                                    }
+                                    if (--remaining == 0) { calendarsLoaded = true; updateCalendarSpinner() }
                                 }
                             })
                     }
@@ -287,6 +261,7 @@ class CreateEventActivity : AppCompatActivity() {
             })
     }
 
+    /** Populates the calendar spinner with loaded calendars */
     private fun updateCalendarSpinner() {
         val names = if (calendarList.isEmpty()) listOf("No calendars")
         else calendarList.map { it.title ?: "(Untitled)" }

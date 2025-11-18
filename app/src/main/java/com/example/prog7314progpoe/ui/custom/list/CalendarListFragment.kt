@@ -30,8 +30,11 @@ class CalendarListFragment : Fragment(R.layout.fragment_calendar_list) {
     private lateinit var rv: RecyclerView
     private lateinit var addBtn: MaterialButton
 
+    private lateinit var auth: FirebaseAuth
+
     private val adapter = CalendarListAdapter { cal -> openDetail(cal) }
     private var fullList: List<CalendarModel> = emptyList()
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -40,6 +43,8 @@ class CalendarListFragment : Fragment(R.layout.fragment_calendar_list) {
         emptyTv = view.findViewById(R.id.tvEmptyState)
         rv = view.findViewById(R.id.rvCalendars)
         addBtn = view.findViewById(R.id.btnAddCalendar)
+        auth = FirebaseAuth.getInstance()
+
 
         rv.layoutManager = LinearLayoutManager(requireContext())
         rv.adapter = adapter
@@ -63,11 +68,14 @@ class CalendarListFragment : Fragment(R.layout.fragment_calendar_list) {
     }
 
     private fun load() {
-        val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        FirebaseCalendarDbHelper.getUserCalendars(uid) { list ->
-            fullList = list.sortedBy { it.title?.lowercase() ?: "" }
+        val uid = auth.currentUser?.uid ?: return
+        FirebaseCalendarDbHelper.getCalendarsForUser(uid) { calendars ->
+            // Filter out meeting calendars from the custom tab
+            fullList = calendars.filter { calendar ->
+                calendar.isMeetingCalendar != true
+            }
             adapter.submitList(fullList)
-            filter(searchEt.text?.toString().orEmpty())
+            emptyTv.visibility = if (fullList.isEmpty()) View.VISIBLE else View.GONE
         }
     }
 

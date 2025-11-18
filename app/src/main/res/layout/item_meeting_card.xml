@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    app:cardElevation="2dp"
+    app:cardCornerRadius="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp">
+
+        <!-- Meeting Title -->
+        <TextView
+            android:id="@+id/txtMeetingTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Meeting Title"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="?attr/colorOnSurface"
+            android:maxLines="2"
+            android:ellipsize="end" />
+
+        <!-- Date -->
+        <TextView
+            android:id="@+id/txtMeetingDate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Jan 15, 2024"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="8dp"
+            android:drawableStart="@android:drawable/ic_menu_my_calendar"
+            android:drawablePadding="8dp" />
+
+        <!-- Time -->
+        <TextView
+            android:id="@+id/txtMeetingTime"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="10:00 - 11:00"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="4dp"
+            android:drawableStart="@android:drawable/ic_menu_recent_history"
+            android:drawablePadding="8dp" />
+
+        <!-- Participants -->
+        <TextView
+            android:id="@+id/txtParticipants"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="3 participants"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="4dp"
+            android:drawableStart="@android:drawable/ic_menu_agenda"
+            android:drawablePadding="8dp" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

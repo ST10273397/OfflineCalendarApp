@@ -38,12 +38,14 @@ class ShareCalendarDetailFragment : Fragment(R.layout.fragment_share_calendar_de
     private lateinit var rvUsers: RecyclerView
     private lateinit var progress: ProgressBar
     private lateinit var tvEmpty: TextView
+    private var ownerId: String = ""  // ← Store owner ID
+
     private val adapter by lazy {
         SharedUsersAdapter(onRemove = { row -> removeUser(row.userId) })
     }
     //-----------------------------------------------------------------------------------------------
 
-    //SEGMENT lifecycle - load header and users
+    //SEGMENT lifecycle
     //-----------------------------------------------------------------------------------------------
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -71,7 +73,7 @@ class ShareCalendarDetailFragment : Fragment(R.layout.fragment_share_calendar_de
     }
     //-----------------------------------------------------------------------------------------------
 
-    //SEGMENT header - read title and description from calendars/<id>
+    //SEGMENT header - read title and description from calendars
     //-----------------------------------------------------------------------------------------------
     private fun loadHeader() {
         db.child("calendars").child(calendarId)
@@ -80,6 +82,7 @@ class ShareCalendarDetailFragment : Fragment(R.layout.fragment_share_calendar_de
                     val m = snap.getValue(CalendarModel::class.java)
                     tvTitle.text = m?.title ?: "(Untitled)"
                     tvDesc.text = m?.description.orEmpty()
+                    ownerId = m?.ownerId ?: ""  // ← Store owner ID
                 }
 
                 override fun onCancelled(error: DatabaseError) {
@@ -89,7 +92,7 @@ class ShareCalendarDetailFragment : Fragment(R.layout.fragment_share_calendar_de
     }
     //-----------------------------------------------------------------------------------------------
 
-    //SEGMENT users - read calendars/<id>/sharedWith -> /users/<uid>/email
+    //SEGMENT users
     //-----------------------------------------------------------------------------------------------
     private fun loadUsers() {
         progress.visibility = View.VISIBLE
@@ -117,7 +120,7 @@ class ShareCalendarDetailFragment : Fragment(R.layout.fragment_share_calendar_de
             })
     }
 
-    //SUB-SEGMENT helper - hydrate user ids to emails
+    //SUB-SEGMENT helper - ids to emails
     //-----------------------------------------------------------------------------------------------
     private fun fetchEmails(userIds: List<String>) {
         val rows = mutableListOf<SharedUserRow>()
@@ -128,7 +131,11 @@ class ShareCalendarDetailFragment : Fragment(R.layout.fragment_share_calendar_de
                 .addListenerForSingleValueEvent(object : ValueEventListener {
                     override fun onDataChange(snap: DataSnapshot) {
                         val email = snap.getValue(String::class.java) ?: "(unknown)"
-                        rows.add(SharedUserRow(userId = uid, email = email))
+                        rows.add(SharedUserRow(
+                            userId = uid,
+                            email = email,
+                            isOwner = uid == ownerId  // ← Pass owner flag
+                        ))
                         if (--remaining == 0) {
                             progress.visibility = View.GONE
                             adapter.submitList(rows.sortedBy { it.email.lowercase() })
@@ -151,9 +158,15 @@ class ShareCalendarDetailFragment : Fragment(R.layout.fragment_share_calendar_de
     //SEGMENT remove user - owner removes target from sharedWith and user_calendars
     //-----------------------------------------------------------------------------------------------
     private fun removeUser(targetUserId: String) {
-        val ownerId = auth.currentUser?.uid
-        if (ownerId.isNullOrBlank()) {
+        val currentUserId = auth.currentUser?.uid
+        if (currentUserId.isNullOrBlank()) {
             Toast.makeText(requireContext(), "not signed in", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // ← Safety check - prevent removing owner
+        if (targetUserId == ownerId) {
+            Toast.makeText(requireContext(), "Cannot remove the owner", Toast.LENGTH_SHORT).show()
             return
         }
 

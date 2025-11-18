@@ -1,7 +1,6 @@
 package com.example.prog7314progpoe.ui.reglogin
 
 import android.content.ContentValues
-import android.content.ContentValues.TAG
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -9,184 +8,153 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.biometric.BiometricPrompt
+import androidx.core.content.ContextCompat
 import androidx.credentials.Credential
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.lifecycle.lifecycleScope
-import com.example.prog7314progpoe.ui.HomeActivity
 import com.example.prog7314progpoe.R
+import com.example.prog7314progpoe.database.user.FirebaseUserDbHelper
 import com.example.prog7314progpoe.database.user.UserModel
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
-import com.google.firebase.Firebase
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
-import com.google.firebase.auth.GoogleAuthProvider
-import com.google.firebase.auth.auth
-import kotlinx.coroutines.launch
+import com.example.prog7314progpoe.offline.OfflineManager
+import com.example.prog7314progpoe.offline.SessionManager
+import com.example.prog7314progpoe.ui.HomeActivity
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.database.FirebaseDatabase
-import androidx.appcompat.app.AppCompatDelegate
-import androidx.biometric.BiometricPrompt
-import androidx.core.content.ContextCompat
-import com.example.prog7314progpoe.database.user.FirebaseUserDbHelper
-import com.example.prog7314progpoe.offline.OfflineManager
-import com.example.prog7314progpoe.offline.SessionManager
+import kotlinx.coroutines.launch
 import java.util.concurrent.Executor
 
 class AuthActivity : AppCompatActivity() {
 
+    // -------------------------
+    // Firebase & Authentication
+    // -------------------------
     private lateinit var auth: FirebaseAuth
-    private val credentialManager by lazy { CredentialManager.create(this) }
+    private lateinit var googleSignInClient: GoogleSignInClient
+    private val RC_SIGN_IN = 9001 // Request code for Google sign-in
 
-    // Google sign-in request
+    private val db = FirebaseDatabase
+        .getInstance("https://chronosync-f3425-default-rtdb.europe-west1.firebasedatabase.app/")
+        .getReference("users")
+
+    // Credential Manager (optional Google sign-in)
+    private val credentialManager by lazy { CredentialManager.create(this) }
     private val googleIdOption by lazy {
-        GetGoogleIdOption.Builder()
-            .setServerClientId(getString(R.string.default_web_client_id)) // from google-services.json
+        com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
+            .setServerClientId(getString(R.string.default_web_client_id))
             .setFilterByAuthorizedAccounts(false)
             .build()
     }
-
-    // Credential Manager request
     private val request by lazy {
         GetCredentialRequest.Builder()
             .addCredentialOption(googleIdOption)
             .build()
     }
 
-    private lateinit var googleSignInClient: GoogleSignInClient
-    private val RC_SIGN_IN = 9001 // Request code
-
-    private val db = FirebaseDatabase
-        .getInstance("https://chronosync-f3425-default-rtdb.europe-west1.firebasedatabase.app/")
-        .getReference("users")
-
+    // -------------------------
+    // Biometric login
+    // -------------------------
     private lateinit var executor: Executor
     private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
 
+    // -------------------------
+    // Offline session & storage
+    // -------------------------
     private lateinit var sessionManager: SessionManager
 
+    // -------------------------
+    // Lifecycle
+    // -------------------------
     override fun onCreate(savedInstanceState: Bundle?) {
-
-        //SEGMENT theme init - apply saved dark mode before UI inflates
-        //-----------------------------------------------------------------------------------------------
-        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE) // read saved prefs
-        val enabled = prefs.getBoolean("dark_mode", false) // read flag
-        val desired = if (enabled) AppCompatDelegate.MODE_NIGHT_YES else AppCompatDelegate.MODE_NIGHT_NO // pick mode
-        if (AppCompatDelegate.getDefaultNightMode() != desired) {
-            AppCompatDelegate.setDefaultNightMode(desired) // apply if different
+        // -------------------------
+        // Theme initialization (dark mode)
+        // -------------------------
+        val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+        val darkModeEnabled = prefs.getBoolean("dark_mode", false)
+        val desiredMode = if (darkModeEnabled) AppCompatDelegate.MODE_NIGHT_YES
+        else AppCompatDelegate.MODE_NIGHT_NO
+        if (AppCompatDelegate.getDefaultNightMode() != desiredMode) {
+            AppCompatDelegate.setDefaultNightMode(desiredMode)
         }
-        //-----------------------------------------------------------------------------------------------
 
         super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_auth)
 
-        //SEGMENT firebase auth - init auth
-        //-----------------------------------------------------------------------------------------------
-        auth = Firebase.auth // set firebase auth
-        //-----------------------------------------------------------------------------------------------
+        // -------------------------
+        // Firebase auth & session setup
+        // -------------------------
+        auth = FirebaseAuth.getInstance()
         sessionManager = SessionManager(this)
 
-        //SEGMENT inflate UI - set the main layout
-        //-----------------------------------------------------------------------------------------------
-        setContentView(R.layout.activity_auth) // inflate
+        // -------------------------
+        // Biometric setup
+        // -------------------------
         executor = ContextCompat.getMainExecutor(this)
+        setupBiometricPrompt()
+
+        val biometricLoginButton = findViewById<LinearLayout>(R.id.btnBiometric_login)
+        biometricLoginButton.setOnClickListener {
+            biometricPrompt.authenticate(promptInfo)
+        }
+
+        // -------------------------
+        // UI references
+        // -------------------------
+        val btnLogin = findViewById<Button>(R.id.btnLogin)
+        val btnSignUp = findViewById<Button>(R.id.btnSignUp)
+        val googleLoginBtn = findViewById<LinearLayout>(R.id.btnGoogleLogin)
+
+        // -------------------------
+        // Navigation for login/register
+        // -------------------------
+        btnLogin.setOnClickListener {
+            startActivity(Intent(this, LoginActivity::class.java))
+        }
+        btnSignUp.setOnClickListener {
+            startActivity(Intent(this, RegisterActivity::class.java))
+        }
+
+        // -------------------------
+        // Google Sign-In setup
+        // -------------------------
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            .requestIdToken(getString(R.string.default_web_client_id))
+            .requestEmail()
+            .build()
+        googleSignInClient = GoogleSignIn.getClient(this, gso)
+
+        // Handle Google login button click
+        googleLoginBtn.setOnClickListener {
+            startActivityForResult(googleSignInClient.signInIntent, RC_SIGN_IN)
+        }
+    }
+
+    // -------------------------
+    // Biometric prompt configuration
+    // -------------------------
+    private fun setupBiometricPrompt() {
         biometricPrompt = BiometricPrompt(this, executor,
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    super.onAuthenticationError(errorCode, errString)
-                    Toast.makeText(applicationContext,
-                        "Authentication error: $errString", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Authentication error: $errString", Toast.LENGTH_SHORT).show()
                 }
 
-                // In your biometric callback's onAuthenticationSucceeded:
-
-                override fun onAuthenticationSucceeded(
-                    result: BiometricPrompt.AuthenticationResult
-                ) {
-                    super.onAuthenticationSucceeded(result)
-
-                    lifecycleScope.launch {
-                        val offlineManager = OfflineManager(this@AuthActivity)
-                        val primaryUser = offlineManager.getPrimaryUser()
-
-                        if (primaryUser == null) {
-                            Toast.makeText(
-                                this@AuthActivity,
-                                "No biometric user configured. Please login normally first.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            return@launch
-                        }
-
-                        val email = primaryUser.email?.trim().orEmpty()
-                        val password = primaryUser.password?.trim().orEmpty()
-
-                        if (email.isBlank() || password.isBlank()) {
-                            Toast.makeText(
-                                this@AuthActivity,
-                                "Stored credentials invalid.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            return@launch
-                        }
-
-                        if (offlineManager.isOnline()) {
-                            // Online: Authenticate with Firebase
-                            FirebaseUserDbHelper.loginUser(email, password) { success, message ->
-                                if (success) {
-                                    // **SAVE SESSION**
-                                    sessionManager.saveSession(
-                                        userId = primaryUser.userId,
-                                        email = email,
-                                        isOffline = false
-                                    )
-
-                                    Toast.makeText(
-                                        this@AuthActivity,
-                                        "Logged in with biometrics",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-
-                                    lifecycleScope.launch {
-                                        offlineManager.syncDashboardToOffline(primaryUser.userId) { }
-                                    }
-                                    updateUI(auth.currentUser)
-                                } else {
-                                    Toast.makeText(
-                                        this@AuthActivity,
-                                        "Biometric login failed: $message",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                }
-                            }
-                        } else {
-                            // Offline: Use cached credentials
-                            // **SAVE SESSION FOR OFFLINE MODE**
-                            sessionManager.saveSession(
-                                userId = primaryUser.userId,
-                                email = email,
-                                isOffline = true
-                            )
-
-                            Toast.makeText(
-                                this@AuthActivity,
-                                "Offline mode - using biometrics",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            updateUIOffline(primaryUser)
-                        }
-                    }
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    handleBiometricSuccess()
                 }
 
                 override fun onAuthenticationFailed() {
-                    super.onAuthenticationFailed()
-                    Toast.makeText(applicationContext,
-                        "Authentication failed", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(applicationContext, "Authentication failed", Toast.LENGTH_SHORT).show()
                 }
             })
 
@@ -195,159 +163,132 @@ class AuthActivity : AppCompatActivity() {
             .setSubtitle("Log in using your biometric credential")
             .setNegativeButtonText("Use account password")
             .build()
-
-        val biometricLoginButton =
-            findViewById<LinearLayout>(R.id.btnBiometric_login)
-        biometricLoginButton.setOnClickListener {
-            biometricPrompt.authenticate(promptInfo)
-        }
-        //-----------------------------------------------------------------------------------------------
-
-        //SEGMENT view refs - grab buttons and rows
-        //-----------------------------------------------------------------------------------------------
-        val btnLogin = findViewById<Button>(R.id.btnLogin) // login button
-        val btnSignUp = findViewById<Button>(R.id.btnSignUp) // sign up button
-        val googleLoginBtn = findViewById<LinearLayout>(R.id.btnGoogleLogin) // google login row
-        //-----------------------------------------------------------------------------------------------
-
-        //SEGMENT simple nav - email login and register screens
-        //-----------------------------------------------------------------------------------------------
-        btnLogin.setOnClickListener {
-            startActivity(Intent(this, LoginActivity::class.java)) // go to login
-        }
-        btnSignUp.setOnClickListener {
-            startActivity(Intent(this, RegisterActivity::class.java)) // go to register
-        }
-        //-----------------------------------------------------------------------------------------------
-
-        //SEGMENT google sign in - configure GSO and handlers
-        //-----------------------------------------------------------------------------------------------
-        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestIdToken(getString(R.string.default_web_client_id)) // from google services
-            .requestEmail() // request email
-            .build() // build gso
-
-        googleSignInClient = GoogleSignIn.getClient(this, gso) // create client
-
-        //SUB-SEGMENT hook up both google rows to the same handler
-        //-------------------------------------------------
-        val startGoogle = {
-            val signInIntent = googleSignInClient.signInIntent // intent
-            startActivityForResult(signInIntent, RC_SIGN_IN) // launch
-        }
-        googleLoginBtn.setOnClickListener { startGoogle() } // tap to start
-        //-------------------------------------------------
-        //-----------------------------------------------------------------------------------------------
     }
 
+    // -------------------------
+    // Biometric login handling
+    // -------------------------
+    private fun handleBiometricSuccess() {
+        lifecycleScope.launch {
+            val offlineManager = OfflineManager(this@AuthActivity)
+            val primaryUser = offlineManager.getPrimaryUser()
 
+            if (primaryUser == null) {
+                Toast.makeText(this@AuthActivity, "No biometric user configured. Login normally first.", Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val email = primaryUser.email?.trim().orEmpty()
+            val password = primaryUser.password?.trim().orEmpty()
+
+            if (email.isBlank() || password.isBlank()) {
+                Toast.makeText(this@AuthActivity, "Stored credentials invalid.", Toast.LENGTH_LONG).show()
+                return@launch
+            }
+
+            if (offlineManager.isOnline()) {
+                // Online: authenticate with Firebase
+                FirebaseUserDbHelper.loginUser(email, password) { success, message ->
+                    if (success) {
+                        sessionManager.saveSession(primaryUser.userId, email, isOffline = false)
+                        Toast.makeText(this@AuthActivity, "Logged in with biometrics", Toast.LENGTH_SHORT).show()
+                        lifecycleScope.launch { offlineManager.syncDashboardToOffline(primaryUser.userId) {} }
+                        updateUI(auth.currentUser)
+                    } else {
+                        Toast.makeText(this@AuthActivity, "Biometric login failed: $message", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } else {
+                // Offline: use cached credentials
+                sessionManager.saveSession(primaryUser.userId, email, isOffline = true)
+                Toast.makeText(this@AuthActivity, "Offline mode - using biometrics", Toast.LENGTH_SHORT).show()
+                updateUIOffline(primaryUser)
+            }
+        }
+    }
+
+    // -------------------------
+    // Google Sign-In result
+    // -------------------------
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-
         if (requestCode == RC_SIGN_IN) {
             val task = GoogleSignIn.getSignedInAccountFromIntent(data)
             try {
                 val account = task.getResult(ApiException::class.java)!!
                 firebaseAuthWithGoogle(account.idToken!!)
             } catch (e: ApiException) {
-                Toast.makeText(this, "Google sign in failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Google sign-in failed: ${e.message}", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    private fun launchGoogleSignIn() {
-        lifecycleScope.launch {
-            try {
-                val result = credentialManager.getCredential(this@AuthActivity, request)
-                handleSignIn(result.credential)
-            } catch (e: Exception) {
-                Log.e(ContentValues.TAG, "Google sign-in failed: ${e.localizedMessage}")
-                Toast.makeText(this@AuthActivity, "Google sign-in failed", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // Firebase auth with Google
+    // -------------------------
+    // Firebase authentication with Google
+    // -------------------------
     private fun firebaseAuthWithGoogle(idToken: String) {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
-        auth.signInWithCredential(credential)
-            .addOnCompleteListener(this) { task ->
-                if (task.isSuccessful) {
-                    Log.d(ContentValues.TAG, "signInWithCredential:success")
-                    val user = auth.currentUser
-                    // Make sure user exists in your Realtime Database
-                    if (user != null) {
-                        createUserInDatabaseIfNotExists(user)
-                    }
-                    updateUI(user)
-                } else {
-                    Log.w(ContentValues.TAG, "signInWithCredential:failure", task.exception)
-                    updateUI(null)
-                }
+        auth.signInWithCredential(credential).addOnCompleteListener(this) { task ->
+            if (task.isSuccessful) {
+                val user = auth.currentUser
+                if (user != null) createUserInDatabaseIfNotExists(user)
+                updateUI(user)
+            } else {
+                Log.w(ContentValues.TAG, "signInWithCredential:failure", task.exception)
+                updateUI(null)
             }
+        }
     }
 
-    // Handle Credential Manager result
+    // -------------------------
+    // Handle Credential Manager Google sign-in
+    // -------------------------
     private fun handleSignIn(credential: Credential) {
-        if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
-            val googleIdTokenCredential = GoogleIdTokenCredential.Companion.createFrom(credential.data)
+        if (credential is CustomCredential && credential.type ==
+            com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
+        ) {
+            val googleIdTokenCredential = com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.createFrom(credential.data)
             firebaseAuthWithGoogle(googleIdTokenCredential.idToken)
         } else {
-            Log.w(ContentValues.TAG, "Credential is not of type Google ID!")
+            Log.w(ContentValues.TAG, "Credential is not Google ID Token type")
         }
     }
 
-    //This is just a stand in for a real method you can put in
+    // -------------------------
+    // UI updates
+    // -------------------------
     private fun updateUI(user: FirebaseUser?) {
         if (user != null) {
-            val intent = Intent(this, HomeActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, HomeActivity::class.java))
             finish()
-        } else {
-            Log.d(ContentValues.TAG, "User is null, staying on LoginActivity")
-        }
+        } else Log.d(ContentValues.TAG, "User is null, staying on LoginActivity")
     }
 
     private fun updateUIOffline(user: UserModel?) {
         if (user != null) {
-            val intent = Intent(this, HomeActivity::class.java)
-            startActivity(intent)
+            startActivity(Intent(this, HomeActivity::class.java))
             finish()
-        }else{
-            Log.d(TAG, "User is null, staying on LoginActivity")
-        }
+        } else Log.d(ContentValues.TAG, "User is null, staying on LoginActivity")
     }
 
-    fun createUserInDatabaseIfNotExists(user: FirebaseUser, onComplete: (() -> Unit)? = null) {
+    // -------------------------
+    // Ensure user exists in Realtime Database
+    // -------------------------
+    private fun createUserInDatabaseIfNotExists(user: FirebaseUser, onComplete: (() -> Unit)? = null) {
         db.child(user.uid).get().addOnSuccessListener { snapshot ->
             if (!snapshot.exists()) {
                 val newUser = UserModel(
                     userId = user.uid,
                     email = user.email ?: "",
                     firstName = user.displayName ?: "",
-                    lastName = "", // Optional: parse from displayName if you want
+                    lastName = "",
                     location = "",
                     dateOfBirth = null
                 )
-                db.child(user.uid).setValue(newUser).addOnCompleteListener {
-                    onComplete?.invoke()
-                }
+                db.child(user.uid).setValue(newUser).addOnCompleteListener { onComplete?.invoke() }
             } else {
                 onComplete?.invoke()
             }
         }
     }
-
-    /*
-    Use this to assign the current user to what they have made.
-    val currentUserId = FirebaseAuth.getInstance().currentUser?.uid ?: return
-    FirebaseCalendarDbHelper.insertCalendar(
-    ownerId = currentUserId,
-    title = "My Calendar",
-    holidays = null
-    ) {
-        // Calendar created
-    }
-    */
-
 }

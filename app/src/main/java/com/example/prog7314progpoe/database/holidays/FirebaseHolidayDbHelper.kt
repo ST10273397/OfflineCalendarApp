@@ -9,7 +9,7 @@ object FirebaseHolidayDbHelper {
 
     private val db = FirebaseDatabase.getInstance(RTDB_URL).reference
 
-    // Add a holiday to a calendar
+        // Add a holiday to a calendar
     fun addHoliday(
         calendarId: String?,
         holiday: HolidayModel,

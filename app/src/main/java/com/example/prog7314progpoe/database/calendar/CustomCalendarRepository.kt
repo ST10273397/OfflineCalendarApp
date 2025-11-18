@@ -7,22 +7,31 @@ import com.example.prog7314progpoe.database.holidays.FirebaseHolidayDbHelper
 import com.example.prog7314progpoe.database.holidays.HolidayModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /**
- * Repository with offline-first strategy for custom calendars
- * Fetches from Firebase, caches locally in Room
+ * Repository for Custom Calendars
+ * Provides offline-first strategy: fetches from Firebase and caches locally in Room.
  */
 class CustomCalendarRepository(context: Context) {
 
+    //-----------------------------------------------------------------------------------------------
+    // DAO setup
+    //-----------------------------------------------------------------------------------------------
     private val db = AppDatabase.getCalendarDatabase(context) as AppDatabase
     private val calendarDao = db.calendarDAO()
     private val holidayDao = db.holidayDAO()
 
+    //-----------------------------------------------------------------------------------------------
+    // USER CALENDAR METHODS
+    //-----------------------------------------------------------------------------------------------
+
     /**
-     * **ENHANCED: Get user's calendars - offline first**
+     * Get all calendars for a user.
+     * Tries local cache first unless `forceRefresh` is true.
      */
     suspend fun getUserCalendars(
         userId: String,
@@ -30,7 +39,6 @@ class CustomCalendarRepository(context: Context) {
     ): List<CalendarModel> {
         return withContext(Dispatchers.IO) {
             if (!forceRefresh) {
-                // Try local cache first
                 val cached = calendarDao.getCalendarsByUser(userId)
                 if (cached.isNotEmpty()) {
                     Log.d("CustomCalRepo", "Returning ${cached.size} cached calendars")
@@ -38,37 +46,20 @@ class CustomCalendarRepository(context: Context) {
                 }
             }
 
-            // Fetch from Firebase
+            // Fetch from Firebase and save to local DB
             try {
                 val latch = CompletableDeferred<List<CalendarModel>>()
-                FirebaseCalendarDbHelper.getUserCalendars(userId) { calendars ->
-                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
-                        // Save to local database
+                FirebaseCalendarDbHelper.getCalendarsForUser(userId) { calendars ->
+                    GlobalScope.launch(Dispatchers.IO) {
                         calendars.forEach { cal ->
                             try {
-                                // Ensure ownerId is set
-                                val calWithOwner = if (cal.ownerId.isNullOrBlank()) {
-                                    cal.copy(ownerId = userId)
-                                } else {
-                                    cal
-                                }
-
+                                val calWithOwner = cal.copy(ownerId = cal.ownerId ?: userId)
                                 calendarDao.insert(calWithOwner)
 
-                                // Also save holidays
+                                // Save associated holidays
                                 cal.holidays?.values?.forEach { holiday ->
-                                    val holidayWithSource = HolidayModel(
+                                    val holidayWithSource = holiday.copy(
                                         holidayId = "${cal.calendarId}:${holiday.holidayId ?: UUID.randomUUID()}",
-                                        name = holiday.name,
-                                        desc = holiday.desc,
-                                        date = holiday.date,
-                                        dateStart = holiday.dateStart,
-                                        dateEnd = holiday.dateEnd,
-                                        timeStart = holiday.timeStart,
-                                        timeEnd = holiday.timeEnd,
-                                        repeat = holiday.repeat,
-                                        type = holiday.type,
-                                        country = holiday.country,
                                         sourceId = cal.calendarId,
                                         sourceType = "custom",
                                         cachedAt = System.currentTimeMillis()
@@ -86,14 +77,14 @@ class CustomCalendarRepository(context: Context) {
                 latch.await()
             } catch (e: Exception) {
                 Log.e("CustomCalRepo", "Error fetching from Firebase, using cache", e)
-                // Fallback to cache on error
                 calendarDao.getCalendarsByUser(userId)
             }
         }
     }
 
     /**
-     * **ENHANCED: Get holidays for a calendar - offline first**
+     * Get all holidays for a calendar.
+     * Uses offline cache first unless `forceRefresh` is true.
      */
     suspend fun getHolidaysForCalendar(
         calendarId: String,
@@ -101,7 +92,6 @@ class CustomCalendarRepository(context: Context) {
     ): List<HolidayModel> {
         return withContext(Dispatchers.IO) {
             if (!forceRefresh) {
-                // Try local cache first
                 val cached = holidayDao.getHolidaysBySource(calendarId, "custom")
                 if (cached.isNotEmpty()) {
                     Log.d("CustomCalRepo", "Returning ${cached.size} cached holidays")
@@ -109,29 +99,18 @@ class CustomCalendarRepository(context: Context) {
                 }
             }
 
-            // Fetch from Firebase
+            // Fetch from Firebase and save to local DB
             try {
                 val latch = CompletableDeferred<List<HolidayModel>>()
                 FirebaseHolidayDbHelper.getAllHolidays(calendarId) { holidays ->
-                    kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
+                    GlobalScope.launch(Dispatchers.IO) {
                         holidays.forEach { holiday ->
-                            val prefixedHoliday = HolidayModel(
+                            val prefixedHoliday = holiday.copy(
                                 holidayId = "$calendarId:${holiday.holidayId ?: UUID.randomUUID()}",
-                                name = holiday.name,
-                                desc = holiday.desc,
-                                date = holiday.date,
-                                dateStart = holiday.dateStart,
-                                dateEnd = holiday.dateEnd,
-                                timeStart = holiday.timeStart,
-                                timeEnd = holiday.timeEnd,
-                                repeat = holiday.repeat,
-                                type = holiday.type,
-                                country = holiday.country,
                                 sourceId = calendarId,
                                 sourceType = "custom",
                                 cachedAt = System.currentTimeMillis()
                             )
-
                             try {
                                 holidayDao.insert(prefixedHoliday)
                             } catch (e: Exception) {
@@ -144,55 +123,38 @@ class CustomCalendarRepository(context: Context) {
                 latch.await()
             } catch (e: Exception) {
                 Log.e("CustomCalRepo", "Error fetching holidays from Firebase, using cache", e)
-                // Fallback to cache on error
                 holidayDao.getHolidaysBySource(calendarId, "custom")
             }
         }
     }
 
     /**
-     * **NEW: Get single calendar by ID - offline first**
+     * Get a single calendar by ID (offline-first)
      */
     suspend fun getCalendar(
         calendarId: String,
         forceRefresh: Boolean = false
     ): CalendarModel? {
         return withContext(Dispatchers.IO) {
-            if (!forceRefresh) {
-                val cached = calendarDao.getCalendarById(calendarId)
-                if (cached != null) {
-                    return@withContext cached
-                }
-            }
-
-            // If not in cache or force refresh, would need to fetch from Firebase
-            // For now, return cache only
-            calendarDao.getCalendarById(calendarId)
+            calendarDao.getCalendarById(calendarId)?.takeIf { !forceRefresh }
+                ?: calendarDao.getCalendarById(calendarId) // fallback to cache only
         }
     }
 
+    //-----------------------------------------------------------------------------------------------
+    // SAVE / DELETE LOCAL METHODS
+    //-----------------------------------------------------------------------------------------------
+
     /**
-     * **NEW: Save a single calendar locally**
+     * Save a calendar locally (including its holidays)
      */
     suspend fun saveCalendarLocally(calendar: CalendarModel) {
         withContext(Dispatchers.IO) {
             try {
                 calendarDao.insert(calendar)
-
-                // Also save holidays if present
                 calendar.holidays?.values?.forEach { holiday ->
-                    val holidayWithSource = HolidayModel(
+                    val holidayWithSource = holiday.copy(
                         holidayId = "${calendar.calendarId}:${holiday.holidayId ?: UUID.randomUUID()}",
-                        name = holiday.name,
-                        desc = holiday.desc,
-                        date = holiday.date,
-                        dateStart = holiday.dateStart,
-                        dateEnd = holiday.dateEnd,
-                        timeStart = holiday.timeStart,
-                        timeEnd = holiday.timeEnd,
-                        repeat = holiday.repeat,
-                        type = holiday.type,
-                        country = holiday.country,
                         sourceId = calendar.calendarId,
                         sourceType = "custom",
                         cachedAt = System.currentTimeMillis()
@@ -207,19 +169,15 @@ class CustomCalendarRepository(context: Context) {
     }
 
     /**
-     * **NEW: Delete calendar locally**
+     * Delete a calendar and its associated holidays locally
      */
     suspend fun deleteCalendarLocally(calendarId: String) {
         withContext(Dispatchers.IO) {
             try {
-                val calendar = calendarDao.getCalendarById(calendarId)
-                if (calendar != null) {
+                calendarDao.getCalendarById(calendarId)?.let { calendar ->
                     calendarDao.delete(calendar)
-
-                    // Also delete associated holidays
-                    val holidays = holidayDao.getHolidaysBySource(calendarId, "custom")
-                    holidays.forEach { holidayDao.delete(it) }
-
+                    holidayDao.getHolidaysBySource(calendarId, "custom")
+                        .forEach { holidayDao.delete(it) }
                     Log.d("CustomCalRepo", "Calendar deleted locally: $calendarId")
                 }
             } catch (e: Exception) {
@@ -228,21 +186,20 @@ class CustomCalendarRepository(context: Context) {
         }
     }
 
+    //-----------------------------------------------------------------------------------------------
+    // CACHE MANAGEMENT
+    //-----------------------------------------------------------------------------------------------
+
     /**
      * Clear local cache for a specific user
      */
     suspend fun clearCacheForUser(userId: String) {
         withContext(Dispatchers.IO) {
             try {
-                val calendars = calendarDao.getCalendarsByUser(userId)
-                calendars.forEach { calendar ->
+                calendarDao.getCalendarsByUser(userId).forEach { calendar ->
                     calendarDao.delete(calendar)
-
-                    // Delete associated holidays
-                    calendar.calendarId?.let { calId ->
-                        val holidays = holidayDao.getHolidaysBySource(calId, "custom")
-                        holidays.forEach { holidayDao.delete(it) }
-                    }
+                    holidayDao.getHolidaysBySource(calendar.calendarId, "custom")
+                        .forEach { holidayDao.delete(it) }
                 }
                 Log.d("CustomCalRepo", "Cache cleared for user: $userId")
             } catch (e: Exception) {
@@ -252,18 +209,15 @@ class CustomCalendarRepository(context: Context) {
     }
 
     /**
-     * Clear all local cache
+     * Clear all cached custom calendars and holidays
      */
     suspend fun clearCache() {
         withContext(Dispatchers.IO) {
             try {
-                val calendars = calendarDao.getAllCalendars()
-                calendars.forEach { calendarDao.delete(it) }
-
-                val holidays = holidayDao.getAllHolidays()
+                calendarDao.getAllCalendars().forEach { calendarDao.delete(it) }
+                holidayDao.getAllHolidays()
                     .filter { it.sourceType == "custom" }
-                holidays.forEach { holidayDao.delete(it) }
-
+                    .forEach { holidayDao.delete(it) }
                 Log.d("CustomCalRepo", "All cache cleared")
             } catch (e: Exception) {
                 Log.e("CustomCalRepo", "Error clearing all cache", e)
@@ -272,7 +226,7 @@ class CustomCalendarRepository(context: Context) {
     }
 
     /**
-     * **ENHANCED: Sync all data from Firebase (full refresh) for a user**
+     * Sync all calendars and holidays from Firebase for a user
      */
     suspend fun syncFromFirebase(userId: String): Boolean {
         return try {
@@ -285,8 +239,12 @@ class CustomCalendarRepository(context: Context) {
         }
     }
 
+    //-----------------------------------------------------------------------------------------------
+    // UTILITY METHODS
+    //-----------------------------------------------------------------------------------------------
+
     /**
-     * **NEW: Check if calendar exists locally**
+     * Check if a calendar exists in local cache
      */
     suspend fun isCalendarCached(calendarId: String): Boolean {
         return withContext(Dispatchers.IO) {
@@ -295,28 +253,26 @@ class CustomCalendarRepository(context: Context) {
     }
 
     /**
-     * **NEW: Get cache status info**
+     * Get basic cache info (number of calendars, holidays, last update)
      */
     suspend fun getCacheInfo(userId: String): CacheInfo {
         return withContext(Dispatchers.IO) {
             val calendars = calendarDao.getCalendarsByUser(userId)
             val totalHolidays = calendars.sumOf { calendar ->
-                calendar.calendarId?.let { calId ->
-                    holidayDao.getHolidaysBySource(calId, "custom").size
-                } ?: 0
+                holidayDao.getHolidaysBySource(calendar.calendarId, "custom").size
             }
 
             CacheInfo(
                 calendarCount = calendars.size,
                 holidayCount = totalHolidays,
-                lastUpdate = calendars.maxOfOrNull {
-                    // Assuming you add a lastUpdated field to CalendarModel
-                    System.currentTimeMillis()
-                } ?: 0
+                lastUpdate = System.currentTimeMillis() // Placeholder, replace with actual lastUpdate if added
             )
         }
     }
 
+    /**
+     * Data class for cache information summary
+     */
     data class CacheInfo(
         val calendarCount: Int,
         val holidayCount: Int,

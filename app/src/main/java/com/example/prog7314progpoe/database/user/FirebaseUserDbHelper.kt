@@ -7,19 +7,35 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
+/**
+ * Helper object for managing Firebase Realtime Database operations for users.
+ * Includes registration, login, retrieving users, and managing user dashboards.
+ */
 object FirebaseUserDbHelper {
 
     private const val RTDB_URL = "https://chronosync-f3425-default-rtdb.europe-west1.firebasedatabase.app/"
 
+    // References to Firebase Database paths
     private val db = FirebaseDatabase.getInstance(RTDB_URL).getReference("users")
-
-
-    private val calendarRef = FirebaseDatabase
-        .getInstance("https://chronosync-f3425-default-rtdb.europe-west1.firebasedatabase.app/")
-        .getReference("calendars")
+    private val calendarRef = FirebaseDatabase.getInstance(RTDB_URL).getReference("calendars")
 
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 
+    // -------------------------------
+    // User Authentication & Registration
+    // -------------------------------
+
+    /**
+     * Registers a new user with email and password, and stores additional user data in Firebase.
+     *
+     * @param email User email
+     * @param password User password
+     * @param firstName User first name
+     * @param lastName User last name
+     * @param dateOfBirth User date of birth in ISO format
+     * @param location User location
+     * @param onComplete Callback with success flag and message
+     */
     fun registerUser(
         email: String,
         password: String,
@@ -52,7 +68,13 @@ object FirebaseUserDbHelper {
             }
     }
 
-
+    /**
+     * Logs in a user using email and password.
+     *
+     * @param email User email
+     * @param password User password
+     * @param onComplete Callback with success flag and message
+     */
     fun loginUser(
         email: String?,
         password: String?,
@@ -73,22 +95,47 @@ object FirebaseUserDbHelper {
             }
     }
 
+    // -------------------------------
+    // User Data Retrieval
+    // -------------------------------
 
-
+    /**
+     * Fetches a single user by userId.
+     *
+     * @param userId Firebase UID of the user
+     * @param callback Returns UserModel if found, null otherwise
+     */
     fun getUser(userId: String, callback: (UserModel?) -> Unit) {
-        db.child(userId).get().addOnSuccessListener {
-            callback(it.getValue(UserModel::class.java))
-        }.addOnFailureListener { callback(null) }
+        db.child(userId).get()
+            .addOnSuccessListener { snapshot -> callback(snapshot.getValue(UserModel::class.java)) }
+            .addOnFailureListener { callback(null) }
     }
 
+    /**
+     * Fetches all users from Firebase.
+     *
+     * @param callback Returns a list of UserModel objects
+     */
     fun getAllUsers(callback: (List<UserModel>) -> Unit) {
-        db.get().addOnSuccessListener { snapshot ->
-            val list = snapshot.children.mapNotNull { it.getValue(UserModel::class.java) }
-            callback(list)
-        }.addOnFailureListener { callback(emptyList()) }
+        db.get()
+            .addOnSuccessListener { snapshot ->
+                val list = snapshot.children.mapNotNull { it.getValue(UserModel::class.java) }
+                callback(list)
+            }
+            .addOnFailureListener { callback(emptyList()) }
     }
 
-    // Add a calendar to a user's dashboard
+    // -------------------------------
+    // User Dashboard Management
+    // -------------------------------
+
+    /**
+     * Adds a calendar to the current user's dashboard.
+     * Limits to 8 calendars max.
+     *
+     * @param calendarId ID of the calendar to add
+     * @param onComplete Callback with success flag and message
+     */
     fun addCalendarToDashboard(calendarId: String, onComplete: (Boolean, String) -> Unit) {
         val uid = auth.currentUser?.uid ?: return onComplete(false, "Not logged in")
 
@@ -110,7 +157,12 @@ object FirebaseUserDbHelper {
         })
     }
 
-    // Remove a calendar from a user's dashboard
+    /**
+     * Removes a calendar from the current user's dashboard.
+     *
+     * @param calendarId ID of the calendar to remove
+     * @param onComplete Callback with success flag
+     */
     fun removeCalendarFromDashboard(calendarId: String, onComplete: (Boolean) -> Unit) {
         val uid = auth.currentUser?.uid ?: return onComplete(false)
         db.child(uid).child(calendarId).removeValue()
@@ -118,7 +170,11 @@ object FirebaseUserDbHelper {
             .addOnFailureListener { onComplete(false) }
     }
 
-    // Fetch all dashboard calendars (full calendar data)
+    /**
+     * Fetches all calendar data for the user's dashboard.
+     *
+     * @param callback Returns a list of maps containing calendar data
+     */
     fun getUserDashboardCalendars(callback: (List<Map<String, Any>>) -> Unit) {
         val uid = auth.currentUser?.uid ?: return callback(emptyList())
 
@@ -137,9 +193,11 @@ object FirebaseUserDbHelper {
                 for (id in calendarIds) {
                     calendarRef.child(id).addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(calendarSnap: DataSnapshot) {
-                            calendarSnap.value?.let {
-                                val data = calendarSnap.value as Map<String, Any>
-                                resultList.add(data)
+                            calendarSnap.value?.let { value ->
+                                if (value is Map<*, *>) {
+                                    @Suppress("UNCHECKED_CAST")
+                                    resultList.add(value as Map<String, Any>)
+                                }
                             }
                             remaining--
                             if (remaining == 0) callback(resultList)
@@ -159,4 +217,3 @@ object FirebaseUserDbHelper {
         })
     }
 }
-

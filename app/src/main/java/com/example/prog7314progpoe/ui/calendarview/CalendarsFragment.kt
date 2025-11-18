@@ -37,9 +37,9 @@ import com.example.prog7314progpoe.api.CountryResponse
 import com.example.prog7314progpoe.api.HolidayRepository
 import com.example.prog7314progpoe.database.calendar.CustomCalendarRepository
 import com.example.prog7314progpoe.database.calendar.FirebaseCalendarDbHelper
-import com.example.prog7314progpoe.database.holidays.FirebaseHolidayDbHelper
 import com.example.prog7314progpoe.database.holidays.HolidayModel
 import com.example.prog7314progpoe.offline.OfflineManager
+import com.example.prog7314progpoe.offline.SessionManager
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CompletableDeferred
@@ -55,106 +55,98 @@ import retrofit2.Response
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import com.example.prog7314progpoe.offline.SessionManager
 
-//CALENDAR FRAGMENT - monthly grid with pickers and a day card
-//-----------------------------------------------------------------------------------------------
+/**
+ * CalendarsFragment
+ *
+ * Monthly calendar grid that can display events from two sources:
+ *  - public country holidays (public calendars)
+ *  - user-created custom calendars (custom)
+ *
+ * This cleaned-up fragment adds comments, safer checks, and small refactors
+ * while keeping your original architecture.
+ */
 class CalendarsFragment : Fragment() {
 
-    //STATE - month and chosen sources
-    //-----------------------------------------------------------------------------------------------
-    @RequiresApi(Build.VERSION_CODES.O)
-    private var currentMonth: YearMonth = YearMonth.now() // which month we show
-    @RequiresApi(Build.VERSION_CODES.O)
-    private var selectedDay: LocalDate = LocalDate.now() // selected day for details
-
-    private val activeCountryIsos = mutableSetOf<String>() // public holiday country isos
-    private val activeCustomIds = mutableSetOf<String>() // custom calendar ids
-    private val customIdToName = mutableMapOf<String, String>() // id -> title (for tags)
-
-    private var countries: List<Country> = emptyList() // cached countries
-    private val monthEvents = mutableMapOf<LocalDate, MutableList<EventItem>>() // events per date
-    //-----------------------------------------------------------------------------------------------
-
-    //UI - top header grid and day card
-    //-----------------------------------------------------------------------------------------------
-    private lateinit var txtMonth: TextView // month label
-    private lateinit var btnPrev: ImageButton // go left
-    private lateinit var btnNext: ImageButton // go right
-    private lateinit var btnPickSingle: Button // pick exactly one source
-    private lateinit var btnPickFromDashboard: Button // pick many from dashboard
-    private lateinit var grid: RecyclerView // month grid
-    private lateinit var dayCard: LinearLayout // details card
-    private lateinit var dayCardTitle: TextView // title in card
-    private lateinit var dayCardList: LinearLayout // list of events in card
-    private lateinit var emptyDayText: TextView // empty state text
-    //-----------------------------------------------------------------------------------------------
-
-    //COROUTINES - scope for async work
-    //-----------------------------------------------------------------------------------------------
-    private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob()) // ui scope
-    //-----------------------------------------------------------------------------------------------
-
-    // PER-USER PREFS (matches DashboardFragment)
-    //-----------------------------------------------------------------------------------------------
-    private fun userPrefs() = requireContext()
-        .getSharedPreferences(
-            "dashboard_slots_${sessionManager.getCurrentUserId() ?: "guest"}",
-            Context.MODE_PRIVATE
-        )
-    //-----------------------------------------------------------------------------------------------
-
-    //REPO - cache first access
-    //-----------------------------------------------------------------------------------------------
-    private val repo by lazy { HolidayRepository(requireContext()) } // central repo
-    //-----------------------------------------------------------------------------------------------
-
-    //MODELS - tiny event holder and kind
-    //-----------------------------------------------------------------------------------------------
-    private data class EventItem(
-        val date: LocalDate, // day only
-        val title: String, // event title
-        val sourceLabel: String, // ex South Africa or custom calendar title
-        val sourceKind: SourceKind // public or custom
-    )
-
-    private enum class SourceKind { PUBLIC, CUSTOM } // two kinds
-    //-----------------------------------------------------------------------------------------------
-
-    private val customCalRepo by lazy {
-        CustomCalendarRepository(requireContext())
+    companion object {
+        private const val TAG = "CalendarsFragment"
     }
 
-    private lateinit var sessionManager: SessionManager
+    // ---------- STATE ----------
+    @RequiresApi(Build.VERSION_CODES.O)
+    private var currentMonth: YearMonth = YearMonth.now()
+    @RequiresApi(Build.VERSION_CODES.O)
+    private var selectedDay: LocalDate = LocalDate.now()
 
-    //LIFECYCLE - inflate and wire
-    //-----------------------------------------------------------------------------------------------
+    // Selected sources
+    private val activeCountryIsos = mutableSetOf<String>()
+    private val activeCustomIds = mutableSetOf<String>()
+    private val customIdToName = mutableMapOf<String, String>()
+
+    // Cached data
+    private var countries: List<Country> = emptyList()
+    private val monthEvents = mutableMapOf<LocalDate, MutableList<EventItem>>()
+
+    // ---------- UI ----------
+    private lateinit var txtMonth: TextView
+    private lateinit var btnPrev: ImageButton
+    private lateinit var btnNext: ImageButton
+    private lateinit var btnPickSingle: Button
+    private lateinit var btnPickFromDashboard: Button
+    private lateinit var grid: RecyclerView
+    private lateinit var dayCard: LinearLayout
+    private lateinit var dayCardTitle: TextView
+    private lateinit var dayCardList: LinearLayout
+    private lateinit var emptyDayText: TextView
+
+    // ---------- COROUTINES ----------
+    private val uiScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+
+    // ---------- PER-USER PREFS ----------
+    private lateinit var sessionManager: SessionManager
+    private fun userPrefs() = requireContext().getSharedPreferences("dashboard_slots_${sessionManager.getCurrentUserId() ?: "guest"}", Context.MODE_PRIVATE)
+
+    // ---------- REPOS ----------
+    private val repo by lazy { HolidayRepository(requireContext()) }
+    private val customCalRepo by lazy { CustomCalendarRepository(requireContext()) }
+    private lateinit var offlineManager: OfflineManager
+
+    // ---------- MODELS ----------
+    private data class EventItem(
+        val date: LocalDate,
+        val title: String,
+        val sourceLabel: String,
+        val sourceKind: SourceKind
+    )
+
+    private enum class SourceKind { PUBLIC, CUSTOM }
+
+    // ---------- LIFECYCLE ----------
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        return inflater.inflate(R.layout.fragment_calendars_month, container, false) // inflate layout
+        return inflater.inflate(R.layout.fragment_calendars_month, container, false)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        //BIND VIEWS - grab handles
-        //-----------------------------------------------------------------------------------------------
-        txtMonth = view.findViewById(R.id.txtMonth) // month text
-        btnPrev = view.findViewById(R.id.btnPrev) // prev button
-        btnNext = view.findViewById(R.id.btnNext) // next button
-        btnPickSingle = view.findViewById(R.id.btnPickSingle) // single picker
-        btnPickFromDashboard = view.findViewById(R.id.btnPickFromDashboard) // multi picker
-        grid = view.findViewById(R.id.calendarGrid) // month grid
-        dayCard = view.findViewById(R.id.dayCard) // details card
-        dayCardTitle = view.findViewById(R.id.dayCardTitle) // card title
-        dayCardList = view.findViewById(R.id.dayCardList) // card list
-        emptyDayText = view.findViewById(R.id.emptyDayText) // empty text
+        // Bind views
+        txtMonth = view.findViewById(R.id.txtMonth)
+        btnPrev = view.findViewById(R.id.btnPrev)
+        btnNext = view.findViewById(R.id.btnNext)
+        btnPickSingle = view.findViewById(R.id.btnPickSingle)
+        btnPickFromDashboard = view.findViewById(R.id.btnPickFromDashboard)
+        grid = view.findViewById(R.id.calendarGrid)
+        dayCard = view.findViewById(R.id.dayCard)
+        dayCardTitle = view.findViewById(R.id.dayCardTitle)
+        dayCardList = view.findViewById(R.id.dayCardList)
+        emptyDayText = view.findViewById(R.id.emptyDayText)
+
+        // Helpers
         sessionManager = SessionManager(requireContext())
-        //-----------------------------------------------------------------------------------------------
+        offlineManager = OfflineManager(requireContext())
 
-        //BOTTOM INSET PADDING - keep the day card above the bottom nav
-        //-----------------------------------------------------------------------------------------------
-        val root = view as ViewGroup // root container
+        // Keep the day card above bottom navigation (system inset aware)
+        val root = view as ViewGroup
         val bottomNav = requireActivity().findViewById<BottomNavigationView>(R.id.bottom_nav)
-
         ViewCompat.setOnApplyWindowInsetsListener(root) { v, insets ->
             val sysBottom = insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom
             val navH = bottomNav?.height ?: 0
@@ -162,18 +154,14 @@ class CalendarsFragment : Fragment() {
             v.setPadding(v.paddingLeft, v.paddingTop, v.paddingRight, sysBottom + navH + extra)
             insets
         }
-        //-----------------------------------------------------------------------------------------------
 
-        //GRID SETUP - 7 columns with equal gaps
-        //-----------------------------------------------------------------------------------------------
+        // Grid setup
         grid.layoutManager = GridLayoutManager(requireContext(), 7)
         grid.adapter = DaysAdapter { clicked -> onDayClicked(clicked) }
         grid.addItemDecoration(EqualGapDecoration(dp(4)))
         grid.setHasFixedSize(true)
-        //-----------------------------------------------------------------------------------------------
 
-        //MONTH NAV - move back or forward
-        //-----------------------------------------------------------------------------------------------
+        // Month navigation
         btnPrev.setOnClickListener {
             currentMonth = currentMonth.minusMonths(1)
             refreshMonth()
@@ -182,42 +170,32 @@ class CalendarsFragment : Fragment() {
             currentMonth = currentMonth.plusMonths(1)
             refreshMonth()
         }
-        //-----------------------------------------------------------------------------------------------
 
-        //PICKERS - single vs from dashboard
-        //-----------------------------------------------------------------------------------------------
+        // Pickers
         btnPickSingle.setOnClickListener { onPickSingleCalendar() }
         btnPickFromDashboard.setOnClickListener { onPickFromDashboard() }
-        //-----------------------------------------------------------------------------------------------
 
-        //INITIAL STATE - reset selections and draw
-        //-----------------------------------------------------------------------------------------------
+        // Initial state
         selectedDay = LocalDate.now()
         activeCountryIsos.clear()
         activeCustomIds.clear()
         customIdToName.clear()
         refreshMonth()
-        //-----------------------------------------------------------------------------------------------
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        uiScope.coroutineContext.cancelChildren() // stop pending work
+        uiScope.coroutineContext.cancelChildren()
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //DAY CLICK - select and show details
-    //-----------------------------------------------------------------------------------------------
+    // ---------- UI INTERACTIONS ----------
     @RequiresApi(Build.VERSION_CODES.O)
     private fun onDayClicked(day: LocalDate) {
         selectedDay = day
         renderDayCard()
         grid.adapter?.notifyDataSetChanged()
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //REFRESH MONTH - rebuild grid load events and render card
-    //-----------------------------------------------------------------------------------------------
     @RequiresApi(Build.VERSION_CODES.O)
     private fun refreshMonth() {
         txtMonth.text = currentMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
@@ -225,143 +203,109 @@ class CalendarsFragment : Fragment() {
         fetchMonthEvents()
         renderDayCard()
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //GRID RENDER - compute full weeks with lead and trail days
-    //-----------------------------------------------------------------------------------------------
     @RequiresApi(Build.VERSION_CODES.O)
     private fun renderGrid() {
         val firstOfMonth = currentMonth.atDay(1)
-        val firstDow = firstOfMonth.dayOfWeek.value % 7 // sunday index as 0
+        val firstDow = firstOfMonth.dayOfWeek.value % 7 // Sunday = 0
         val daysInMonth = currentMonth.lengthOfMonth()
 
         val cells = mutableListOf<LocalDate>()
-        for (i in 0 until firstDow) {
-            cells.add(firstOfMonth.minusDays((firstDow - i).toLong()))
-        }
-        for (d in 1..daysInMonth) {
-            cells.add(currentMonth.atDay(d))
-        }
-        while (cells.size % 7 != 0) {
-            val last = cells.last()
-            cells.add(last.plusDays(1))
-        }
-        (grid.adapter as DaysAdapter).submit(cells)
-    }
-    //-----------------------------------------------------------------------------------------------
+        for (i in 0 until firstDow) cells.add(firstOfMonth.minusDays((firstDow - i).toLong()))
+        for (d in 1..daysInMonth) cells.add(currentMonth.atDay(d))
+        while (cells.size % 7 != 0) cells.add(cells.last().plusDays(1))
 
-    //FETCH EVENTS - fill monthEvents map from active sources
-    //-----------------------------------------------------------------------------------------------
+        (grid.adapter as? DaysAdapter)?.submit(cells)
+    }
+
+    // ---------- DATA LOADING ----------
     @RequiresApi(Build.VERSION_CODES.O)
     private fun fetchMonthEvents() {
         monthEvents.clear()
+
         val start = currentMonth.atDay(1)
         val end = currentMonth.atEndOfMonth()
-        val yearList = listOf(start.year, start.year + 1)
-        val offlineManager = OfflineManager(requireContext())
+
+        // Determine which years we may need (handles year boundary)
+        val yearList = listOf(start.year, end.year).distinct()
 
         uiScope.launch {
             try {
                 val isOnline = offlineManager.isOnline()
 
                 if (!isOnline) {
-                    Toast.makeText(
-                        requireContext(),
-                        "Offline mode - showing cached events",
-                        Toast.LENGTH_SHORT
-                    ).show()
+                    Toast.makeText(requireContext(), "Offline mode - showing cached events", Toast.LENGTH_SHORT).show()
                 }
 
-                // **PUBLIC HOLIDAYS (offline-first) - FIXED**
+                // Public holidays (per selected country ISO)
                 for (iso in activeCountryIsos) {
-                    // **CHANGE: Process years separately to avoid duplicates**
                     val allHolidaysForCountry = mutableListOf<HolidayModel>()
 
                     for (y in yearList) {
                         try {
                             val holidays = if (isOnline) {
-                                // Online: fetch from API
-                                val resp = withContext(Dispatchers.IO) {
-                                    repo.getHolidays(iso, y)
-                                }
+                                // Online: fetch from API and cache
+                                val resp = withContext(Dispatchers.IO) { repo.getHolidays(iso, y) }
                                 val hols = resp.response?.holidays ?: emptyList()
-
-                                // Cache for offline use
                                 offlineManager.savePublicHolidaysOffline(iso, y, hols)
                                 hols
                             } else {
-                                // **FIXED: Offline - use cache with year filter**
+                                // Offline: read cached public holidays for that year
                                 offlineManager.getOfflinePublicHolidays(iso, y)
                             }
-
                             allHolidaysForCountry.addAll(holidays)
                         } catch (e: Exception) {
-                            Log.e("CalendarsFragment", "Error loading holidays for $iso/$y", e)
+                            Log.e(TAG, "Error loading holidays for $iso/$y", e)
                         }
                     }
 
-                    // **FIXED: Process each holiday only once**
-                    allHolidaysForCountry.forEach { h ->
-                        val isoDate = h.date?.iso ?: return@forEach
-                        val d = runCatching {
-                            LocalDate.parse(isoDate.substring(0, 10))
-                        }.getOrNull() ?: return@forEach
+                    // Deduplicate and map to EventItem if inside range
+                    allHolidaysForCountry.distinctBy { it.holidayId }.forEach { h ->
+                        // Extract candidate ISO string robustly
+                        val dateIso = h.date?.iso ?: h.dateStart?.iso ?: h.dateEnd?.iso
+                        if (dateIso.isNullOrBlank()) return@forEach
+
+                        val d = runCatching { LocalDate.parse(dateIso.substring(0, 10)) }.getOrNull() ?: return@forEach
 
                         if (!d.isBefore(start) && !d.isAfter(end)) {
                             val title = h.name ?: "Holiday"
                             val label = resolveCountryName(iso)
-                            monthEvents.getOrPut(d) { mutableListOf() }
-                                .add(EventItem(d, title, label, SourceKind.PUBLIC))
+                            monthEvents.getOrPut(d) { mutableListOf() }.add(EventItem(d, title, label, SourceKind.PUBLIC))
                         }
                     }
                 }
 
-                // **CUSTOM CALENDARS (offline-first)**
+                // Custom calendars
                 for (cid in activeCustomIds) {
                     try {
-                        val list = if (isOnline) {
-                            // Online: fetch from Firebase
-                            customCalRepo.getHolidaysForCalendar(cid, forceRefresh = true)
-                        } else {
-                            // Offline: use cache
-                            offlineManager.getOfflineCustomHolidays(cid)
-                        }
+                        val list = if (isOnline) customCalRepo.getHolidaysForCalendar(cid, forceRefresh = true)
+                        else offlineManager.getOfflineCustomHolidays(cid)
 
                         val label = customIdToName[cid] ?: cid
                         list.forEach { h ->
                             val title = h.name ?: "Event"
                             val dateStr = h.date?.iso
-                            val d = runCatching {
-                                LocalDate.parse(dateStr ?: "")
-                            }.getOrNull()
-
+                            val d = runCatching { LocalDate.parse(dateStr ?: "") }.getOrNull()
                             if (d != null && !d.isBefore(start) && !d.isAfter(end)) {
-                                monthEvents.getOrPut(d) { mutableListOf() }
-                                    .add(EventItem(d, title, label, SourceKind.CUSTOM))
+                                monthEvents.getOrPut(d) { mutableListOf() }.add(EventItem(d, title, label, SourceKind.CUSTOM))
                             }
                         }
                     } catch (e: Exception) {
-                        Log.e("CalendarsFragment", "Error loading custom calendar $cid", e)
+                        Log.e(TAG, "Error loading custom calendar $cid", e)
                     }
                 }
 
                 grid.adapter?.notifyDataSetChanged()
                 renderDayCard()
             } catch (e: Exception) {
-                Toast.makeText(
-                    requireContext(),
-                    "Error loading events: ${e.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(requireContext(), "Error loading events: ${e.message}", Toast.LENGTH_SHORT).show()
                 grid.adapter?.notifyDataSetChanged()
                 renderDayCard()
             }
         }
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //DAY CARD - show all events for the selected day
-    //-----------------------------------------------------------------------------------------------
+    // ---------- DAY CARD UI ----------
     @RequiresApi(Build.VERSION_CODES.O)
     private fun renderDayCard() {
         val items = monthEvents[selectedDay].orEmpty()
@@ -373,59 +317,43 @@ class CalendarsFragment : Fragment() {
             emptyDayText.isVisible = true
         } else {
             emptyDayText.isVisible = false
-            items.sortedBy { it.title }.forEach { ev ->
-                dayCardList.addView(makeEventRow(ev))
-            }
+            items.sortedBy { it.title }.forEach { ev -> dayCardList.addView(makeEventRow(ev)) }
         }
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //PICK SINGLE - choose one calendar from full list (public + user custom)
-    //-----------------------------------------------------------------------------------------------
+    // ---------- PICK SINGLE CALENDAR ----------
     @RequiresApi(Build.VERSION_CODES.O)
     private fun onPickSingleCalendar() {
-        // Step 1: ensure country list
+        // Ensure we have a country list (async network call)
         val ensureCountries = CompletableDeferred<Unit>()
         if (countries.isEmpty()) {
-            ApiClient.api.getLocations(ApiConfig.apiKey())
-                .enqueue(object : Callback<CountryResponse> {
-                    override fun onResponse(call: Call<CountryResponse>, response: Response<CountryResponse>) {
-                        countries = response.body()?.response?.countries ?: emptyList()
-                        ensureCountries.complete(Unit)
-                    }
-                    override fun onFailure(call: Call<CountryResponse>, t: Throwable) {
-                        countries = emptyList()
-                        ensureCountries.complete(Unit)
-                    }
-                })
-        } else {
-            ensureCountries.complete(Unit)
-        }
+            ApiClient.api.getLocations(ApiConfig.apiKey()).enqueue(object : Callback<CountryResponse> {
+                override fun onResponse(call: Call<CountryResponse>, response: Response<CountryResponse>) {
+                    countries = response.body()?.response?.countries ?: emptyList()
+                    ensureCountries.complete(Unit)
+                }
 
-        // Step 2: load user’s custom calendars from Firebase
-        val ensureCustoms = CompletableDeferred<List<Pair<String, String>>>() // list of (id,title)
+                override fun onFailure(call: Call<CountryResponse>, t: Throwable) {
+                    countries = emptyList()
+                    ensureCountries.complete(Unit)
+                }
+            })
+        } else ensureCountries.complete(Unit)
+
+        // Load user's custom calendars (from cache or Firebase depending on connectivity)
+        val ensureCustoms = CompletableDeferred<List<Pair<String, String>>>()
         val uid = sessionManager.getCurrentUserId()
-        if (uid == null) {
-            ensureCustoms.complete(emptyList())
-        } else {
-            // Check if offline
-            if (!OfflineManager(requireContext()).isOnline()) {
-                // Use cached calendars
+        if (uid == null) ensureCustoms.complete(emptyList())
+        else {
+            if (!offlineManager.isOnline()) {
                 uiScope.launch {
-                    val cached = OfflineManager(requireContext()).getOfflineCalendars(uid)
-                    val rows = cached
-                        .filter { !it.calendarId.isNullOrBlank() }
-                        .map { it.calendarId!! to (it.title ?: "(Untitled)") }
-                        .sortedBy { it.second.lowercase() }
+                    val cached = offlineManager.getOfflineCalendars(uid)
+                    val rows = cached.filter { !it.calendarId.isNullOrBlank() }.map { it.calendarId!! to (it.title ?: "(Untitled)") }.sortedBy { it.second.lowercase() }
                     ensureCustoms.complete(rows)
                 }
             } else {
-                // Fetch from Firebase
-                FirebaseCalendarDbHelper.getUserCalendars(uid) { list ->
-                    val rows = list
-                        .filter { !it.calendarId.isNullOrBlank() }
-                        .map { it.calendarId!! to (it.title ?: "(Untitled)") }
-                        .sortedBy { it.second.lowercase() }
+                FirebaseCalendarDbHelper.getCalendarsForUser(uid) { list ->
+                    val rows = list.filter { !it.calendarId.isNullOrBlank() }.map { it.calendarId!! to (it.title ?: "(Untitled)") }.sortedBy { it.second.lowercase() }
                     ensureCustoms.complete(rows)
                 }
             }
@@ -433,13 +361,13 @@ class CalendarsFragment : Fragment() {
 
         uiScope.launch {
             ensureCountries.await()
-            val customRows = ensureCustoms.await() // (id, title)
+            val customRows = ensureCustoms.await()
 
-            // Merge lists
+            // Build combined display list (public countries first, then customs)
             val display = mutableListOf<String>()
             val types = mutableListOf<SourceKind>()
             val ids = mutableListOf<String>()
-            val labels = mutableListOf<String>() // for custom names or country names
+            val labels = mutableListOf<String>()
 
             countries.forEach { c ->
                 display += c.country_name
@@ -454,40 +382,31 @@ class CalendarsFragment : Fragment() {
                 labels += title
             }
 
-            showSearchableListDialog(
-                title = "Pick calendar",
-                items = display,
-                emptyHint = "No calendars found"
-            ) { chosen ->
+            showSearchableListDialog(title = "Pick calendar", items = display, emptyHint = "No calendars found") { chosen ->
                 if (chosen == null) return@showSearchableListDialog
                 val idx = display.indexOf(chosen)
                 if (idx < 0) return@showSearchableListDialog
 
-                // Reset & set the selection
+                // Reset selections
                 activeCountryIsos.clear()
                 activeCustomIds.clear()
                 customIdToName.clear()
 
                 when (types[idx]) {
-                    SourceKind.PUBLIC -> {
-                        activeCountryIsos += ids[idx]
-                        // (no need to store label for public; we resolve from iso later)
-                    }
+                    SourceKind.PUBLIC -> activeCountryIsos += ids[idx]
                     SourceKind.CUSTOM -> {
                         val id = ids[idx]
                         val name = labels[idx]
                         activeCustomIds += id
-                        customIdToName[id] = name // keep title for tags
+                        customIdToName[id] = name
                     }
                 }
                 refreshMonth()
             }
         }
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //PICK FROM DASHBOARD - choose multiple saved slots
-    //-----------------------------------------------------------------------------------------------
+    // ---------- PICK FROM DASHBOARD ----------
     @RequiresApi(Build.VERSION_CODES.O)
     private fun onPickFromDashboard() {
         val slots = readDashboardSlots()
@@ -495,30 +414,26 @@ class CalendarsFragment : Fragment() {
             Toast.makeText(requireContext(), "No dashboard calendars to choose", Toast.LENGTH_SHORT).show()
             return
         }
+
         val names = slots.map { it.displayName }
         val checked = BooleanArray(slots.size) { i ->
             val s = slots[i]
-            (s.kind == SourceKind.PUBLIC && activeCountryIsos.contains(s.id)) ||
-                    (s.kind == SourceKind.CUSTOM && activeCustomIds.contains(s.id))
+            (s.kind == SourceKind.PUBLIC && activeCountryIsos.contains(s.id)) || (s.kind == SourceKind.CUSTOM && activeCustomIds.contains(s.id))
         }
 
         AlertDialog.Builder(requireContext())
             .setTitle("Pick from dashboard")
-            .setMultiChoiceItems(names.toTypedArray(), checked) { _, which, isChecked ->
-                checked[which] = isChecked
-            }
+            .setMultiChoiceItems(names.toTypedArray(), checked) { _, which, isChecked -> checked[which] = isChecked }
             .setPositiveButton("Apply") { d, _ ->
                 activeCountryIsos.clear()
                 activeCustomIds.clear()
-                // also rebuild the id->name map for customs so tags show properly
                 customIdToName.clear()
 
                 checked.forEachIndexed { i, flag ->
                     if (flag) {
                         val s = slots[i]
-                        if (s.kind == SourceKind.PUBLIC) {
-                            activeCountryIsos += s.id
-                        } else {
+                        if (s.kind == SourceKind.PUBLIC) activeCountryIsos += s.id
+                        else {
                             activeCustomIds += s.id
                             customIdToName[s.id] = s.displayName
                         }
@@ -530,10 +445,8 @@ class CalendarsFragment : Fragment() {
             .setNegativeButton("Cancel", null)
             .show()
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //HELPERS - read dashboard slots stored in per-user prefs
-    //-----------------------------------------------------------------------------------------------
+    // ---------- HELPERS ----------
     private data class SlotRef(val id: String, val displayName: String, val kind: SourceKind)
 
     private fun readDashboardSlots(): List<SlotRef> {
@@ -548,10 +461,8 @@ class CalendarsFragment : Fragment() {
         }
         return list
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //UI FACTORY - build one row for the day card
-    //-----------------------------------------------------------------------------------------------
+    // Build a compact row view for a single event in the day card
     private fun makeEventRow(ev: EventItem): View {
         val ctx = requireContext()
         val row = LinearLayout(ctx).apply {
@@ -561,7 +472,6 @@ class CalendarsFragment : Fragment() {
         }
 
         val tag = TextView(ctx).apply {
-            // Always use first-two-letter tag (public: country name, custom: calendar title)
             text = shortTag(ev.sourceLabel)
             val tagBgId = resources.getIdentifier("bg_tag_round", "drawable", requireContext().packageName)
             if (tagBgId != 0) setBackgroundResource(tagBgId)
@@ -578,31 +488,14 @@ class CalendarsFragment : Fragment() {
         row.addView(title)
         return row
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //ADAPTER - month grid with 7 columns
-    //-----------------------------------------------------------------------------------------------
-    private inner class DaysAdapter(val onClick: (LocalDate) -> Unit) :
-        RecyclerView.Adapter<DayVH>() {
-
+    // ---------- ADAPTER ----------
+    private inner class DaysAdapter(val onClick: (LocalDate) -> Unit) : RecyclerView.Adapter<DayVH>() {
         private val days = mutableListOf<LocalDate>()
-
-        fun submit(list: List<LocalDate>) {
-            days.clear()
-            days.addAll(list)
-            notifyDataSetChanged()
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DayVH {
-            val v = LayoutInflater.from(parent.context).inflate(R.layout.item_day_cell, parent, false)
-            return DayVH(v)
-        }
-
+        fun submit(list: List<LocalDate>) { days.clear(); days.addAll(list); notifyDataSetChanged() }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DayVH { val v = LayoutInflater.from(parent.context).inflate(R.layout.item_day_cell, parent, false); return DayVH(v) }
         @RequiresApi(Build.VERSION_CODES.O)
-        override fun onBindViewHolder(holder: DayVH, position: Int) {
-            holder.bind(days[position])
-        }
-
+        override fun onBindViewHolder(holder: DayVH, position: Int) { holder.bind(days[position]) }
         override fun getItemCount(): Int = days.size
     }
 
@@ -613,42 +506,28 @@ class CalendarsFragment : Fragment() {
         @RequiresApi(Build.VERSION_CODES.O)
         fun bind(day: LocalDate) {
             txtDay.text = day.dayOfMonth.toString()
-
             val isToday = day == LocalDate.now()
             val isSel = day == selectedDay
             itemView.isSelected = isSel
-
-            if (isToday) {
-                txtDay.setTextColor(Color.parseColor("#1565C0"))
-            } else {
-                txtDay.setTextColor(Color.parseColor("#000000"))
-            }
-
-            val inMonth = day.month == currentMonth.month
-            txtDay.alpha = if (inMonth) 1f else 0.4f
+            txtDay.setTextColor(if (isToday) Color.parseColor("#1565C0") else Color.parseColor("#000000"))
+            txtDay.alpha = if (day.month == currentMonth.month) 1f else 0.4f
 
             val evs = monthEvents[day].orEmpty()
             if (evs.isNotEmpty()) {
-                // base tag uses first two letters of the *source label* (country name or calendar title)
                 val base = shortTag(evs.first().sourceLabel)
                 val tagTextStr = if (evs.size > 1) "$base+" else base
                 txtTag.text = tagTextStr
                 txtTag.setTextColor(Color.parseColor("#1565C0"))
                 txtTag.visibility = View.VISIBLE
-            } else {
-                txtTag.visibility = View.GONE
-            }
+            } else txtTag.visibility = View.GONE
 
             itemView.setOnClickListener { onDayClicked(day) }
         }
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //UTILS - tag text and reflection helpers
-    //-----------------------------------------------------------------------------------------------
+    // ---------- UTIL ----------
     private fun shortTag(name: String): String {
         val s = name.trim()
-        // Use first two *letters* if possible; fallback to first two chars
         val letters = s.replace(Regex("[^\\p{L}]"), "")
         val base = if (letters.length >= 2) letters.substring(0, 2) else s.take(2)
         return base.uppercase()
@@ -656,11 +535,9 @@ class CalendarsFragment : Fragment() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density + 0.5f).toInt()
 
-    private fun resolveCountryName(iso: String): String {
-        val c = countries.firstOrNull { it.isoCode == iso }
-        return c?.country_name ?: iso
-    }
+    private fun resolveCountryName(iso: String): String = countries.firstOrNull { it.isoCode == iso }?.country_name ?: iso
 
+    // Reflection helpers kept for legacy/flexible parsing of API models
     private fun tryField(obj: Any, field: String): String? {
         return try {
             val f = obj.javaClass.getDeclaredField(field)
@@ -684,35 +561,14 @@ class CalendarsFragment : Fragment() {
             }
         } catch (_: Exception) { null }
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //SEARCHABLE DIALOG - generic list with search box
-    //-----------------------------------------------------------------------------------------------
-    private fun showSearchableListDialog(
-        title: String,
-        items: List<String>,
-        emptyHint: String,
-        onChoose: (String?) -> Unit
-    ) {
+    // ---------- SEARCHABLE DIALOG ----------
+    private fun showSearchableListDialog(title: String, items: List<String>, emptyHint: String, onChoose: (String?) -> Unit) {
         val ctx = requireContext()
+        val container = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(8), dp(16), 0) }
 
-        val container = LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(8), dp(16), 0)
-        }
-
-        val search = EditText(ctx).apply {
-            hint = "Search…"
-            inputType = InputType.TYPE_CLASS_TEXT
-        }
-
-        val emptyView = TextView(ctx).apply {
-            text = emptyHint
-            setPadding(0, dp(24), 0, dp(24))
-            gravity = Gravity.CENTER
-            visibility = if (items.isEmpty()) View.VISIBLE else View.GONE
-        }
-
+        val search = EditText(ctx).apply { hint = "Search…"; inputType = InputType.TYPE_CLASS_TEXT }
+        val emptyView = TextView(ctx).apply { text = emptyHint; setPadding(0, dp(24), 0, dp(24)); gravity = Gravity.CENTER; visibility = if (items.isEmpty()) View.VISIBLE else View.GONE }
         val listView = ListView(ctx)
         val data = items.toMutableList()
         val adapter = ArrayAdapter(ctx, android.R.layout.simple_list_item_1, data)
@@ -723,9 +579,7 @@ class CalendarsFragment : Fragment() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
                 val q = s?.toString()?.trim()?.lowercase().orEmpty()
                 val filtered = if (q.isEmpty()) items else items.filter { it.lowercase().contains(q) }
-                adapter.clear()
-                adapter.addAll(filtered)
-                adapter.notifyDataSetChanged()
+                adapter.clear(); adapter.addAll(filtered); adapter.notifyDataSetChanged()
                 emptyView.isVisible = filtered.isEmpty()
             }
             override fun afterTextChanged(s: Editable?) {}
@@ -736,52 +590,30 @@ class CalendarsFragment : Fragment() {
         container.addView(emptyView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
         container.addView(listView, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(400)))
 
-        val dialog = AlertDialog.Builder(ctx)
-            .setTitle(title)
-            .setView(container)
-            .setNegativeButton("Cancel") { d, _ -> d.dismiss(); onChoose(null) }
-            .create()
+        val dialog = AlertDialog.Builder(ctx).setTitle(title).setView(container).setNegativeButton("Cancel") { d, _ -> d.dismiss(); onChoose(null) }.create()
 
-        listView.setOnItemClickListener { _, _, pos, _ ->
-            val chosen = adapter.getItem(pos)
-            dialog.dismiss()
-            onChoose(chosen)
-        }
-
+        listView.setOnItemClickListener { _, _, pos, _ -> val chosen = adapter.getItem(pos); dialog.dismiss(); onChoose(chosen) }
         dialog.show()
     }
-    //-----------------------------------------------------------------------------------------------
 
-    //EQUAL GAP - simple spacing decorator for grid
-    //-----------------------------------------------------------------------------------------------
+    // ---------- DECOR ----------
     private class EqualGapDecoration(private val px: Int) : RecyclerView.ItemDecoration() {
-        override fun getItemOffsets(
-            outRect: Rect,
-            view: View,
-            parent: RecyclerView,
-            state: RecyclerView.State
-        ) {
-            outRect.set(px, px, px, px)
-        }
+        override fun getItemOffsets(outRect: Rect, view: View, parent: RecyclerView, state: RecyclerView.State) { outRect.set(px, px, px, px) }
     }
-    //-----------------------------------------------------------------------------------------------
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onResume() {
         super.onResume()
-
-        // Background sync without blocking UI
         val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid != null) {
             uiScope.launch {
                 try {
                     customCalRepo.syncFromFirebase(uid)
-                    fetchMonthEvents() // Refresh with latest data
+                    fetchMonthEvents()
                 } catch (e: Exception) {
-                    // Silently fail - UI already showing cached data
+                    Log.w(TAG, "Background sync failed", e)
                 }
             }
         }
     }
-
 }

@@ -233,9 +233,9 @@ class ShareMineFragment : Fragment(R.layout.fragment_share_mine) {
                             val title = m.title ?: ""
                             val desc = m.description ?: ""
 
-                            // Count accepted vs pending
+                            // Counts acceped and pending users and not the creator
                             val acceptedCount = m.sharedWith?.count {
-                                it.value.status == "accepted"
+                                it.key != m.ownerId && it.value.status == "accepted"
                             } ?: 0
                             val pendingCount = m.sharedWith?.count {
                                 it.value.status == "pending"
@@ -279,9 +279,9 @@ class ShareMineFragment : Fragment(R.layout.fragment_share_mine) {
                     val current = adapter.currentList.toMutableList()
                     val idx = current.indexOfFirst { it.id == calendarId }
                     if (idx >= 0) {
-                        // Count accepted and pending properly
+                        // Count accepted and pending properly - EXCLUDE OWNER
                         val acceptedCount = m.sharedWith?.count {
-                            it.value.status == "accepted"
+                            it.key != m.ownerId && it.value.status == "accepted"  // ← Added owner exclusion
                         } ?: 0
                         val pendingCount = m.sharedWith?.count {
                             it.value.status == "pending"

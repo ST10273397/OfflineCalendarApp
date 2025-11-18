@@ -79,7 +79,7 @@ class CalendarDetailFragment : Fragment(R.layout.fragment_calendar_detail) {
 
         // Load calendar info
         val uid = FirebaseAuth.getInstance().currentUser?.uid ?: return
-        FirebaseCalendarDbHelper.getUserCalendars(uid) { list ->
+        FirebaseCalendarDbHelper.getCalendarsForUser(uid) { list ->
             current = list.firstOrNull { it.calendarId == id }
             tvTitle.text = current?.title ?: "(Untitled)"
             tvDesc.text  = current?.description ?: ""

@@ -16,7 +16,7 @@
         android:title="Shared"
         android:icon="@android:drawable/ic_menu_share"/>
     <item
-        android:id="@+id/nav_settings"
-        android:title="@string/nav_settings"
-        android:icon="@android:drawable/ic_menu_preferences"/>
+        android:id="@+id/nav_meetings"
+        android:title="Meetings"
+        android:icon="@android:drawable/ic_menu_my_calendar"/>
 </menu>

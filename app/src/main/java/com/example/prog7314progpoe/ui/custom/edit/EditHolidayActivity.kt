@@ -1,13 +1,8 @@
-/**
-Edit form for a single event
-the user adjusts the event info
-On success it takes the user back to the calendar details
- */
-
 package com.example.prog7314progpoe.ui.custom.edit
 
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.widget.AdapterView
@@ -34,7 +29,20 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
+/**
+ * EditHolidayActivity
+ *
+ * Small form that allows editing a single event (holiday) belonging to a user calendar.
+ * On success it saves a partial update to Firebase and returns the user to the caller.
+ *
+ * This cleaned-up version adds clear comments, defensive checks, logging and small UX
+ * improvements such as disabling the Save button when nothing is selected.
+ */
 class EditHolidayActivity : AppCompatActivity() {
+
+    companion object {
+        private const val TAG = "EditHolidayActivity"
+    }
 
     // UI
     private lateinit var spnCalendar: Spinner
@@ -45,10 +53,14 @@ class EditHolidayActivity : AppCompatActivity() {
     private lateinit var btnSave: Button
     private lateinit var btnCancel: Button
 
-    // Data
+    // Firebase
     private lateinit var db: DatabaseReference
+
+    // Local caches
     private val calendarList = mutableListOf<CalendarModel>()
     private val holidayList = mutableListOf<HolidayModel>()
+
+    // Selected ids
     private var selectedCalendarId: String? = null
     private var selectedHolidayId: String? = null
 
@@ -57,7 +69,7 @@ class EditHolidayActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_edit_holiday)
 
-        // Action bar back arrow
+        // Back arrow in action bar
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = getString(R.string.app_name)
 
@@ -72,6 +84,7 @@ class EditHolidayActivity : AppCompatActivity() {
 
         db = FirebaseDatabase.getInstance().reference
 
+        // Ensure user is logged in
         val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid == null) {
             Toast.makeText(this, "Not logged in", Toast.LENGTH_SHORT).show()
@@ -79,58 +92,74 @@ class EditHolidayActivity : AppCompatActivity() {
             return
         }
 
-        // Load calendars for this user
+        // Disable save initially until a holiday is selected
+        btnSave.isEnabled = false
+
+        // Load this user's calendars
         loadUserCalendars(uid)
 
-        // Calendar selection -> load its holidays
+        // When a calendar is chosen, load its holidays
         spnCalendar.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                parent: AdapterView<*>?, view: View?, position: Int, id: Long
-            ) {
-                val cal = calendarList.getOrNull(position) ?: return
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val cal = calendarList.getOrNull(position) ?: run {
+                    selectedCalendarId = null
+                    // clear holidays and UI
+                    holidayList.clear(); updateHolidaySpinner()
+                    return
+                }
                 selectedCalendarId = cal.calendarId
                 loadHolidaysForCalendar(cal.calendarId)
             }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedCalendarId = null
+                holidayList.clear(); updateHolidaySpinner()
+            }
         }
 
-        // Holiday selection -> populate fields
+        // When a holiday is chosen, populate the form
         spnHoliday.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                parent: AdapterView<*>?, view: View?, position: Int, id: Long
-            ) {
-                val h = holidayList.getOrNull(position) ?: return
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                val h = holidayList.getOrNull(position) ?: run {
+                    selectedHolidayId = null
+                    etName.setText(""); etDesc.setText(""); etDate.setText("")
+                    btnSave.isEnabled = false
+                    return
+                }
                 selectedHolidayId = h.holidayId
                 etName.setText(h.name.orEmpty())
                 etDesc.setText(h.desc.orEmpty())
+                // Show ISO date when available
                 etDate.setText(h.date?.iso.orEmpty())
+                btnSave.isEnabled = true
             }
-            override fun onNothingSelected(parent: AdapterView<*>?) {}
+
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+                selectedHolidayId = null
+                etName.setText(""); etDesc.setText(""); etDate.setText("")
+                btnSave.isEnabled = false
+            }
         }
 
-        // Date picker (no past dates)
+        // Date picker: prevent choosing past dates
         val constraints = CalendarConstraints.Builder()
             .setValidator(DateValidatorPointForward.now())
             .build()
+
         val datePicker = MaterialDatePicker.Builder.datePicker()
             .setTitleText("Pick date")
             .setCalendarConstraints(constraints)
             .build()
 
-        etDate.setOnClickListener {
-            datePicker.show(supportFragmentManager, "date")
-        }
+        etDate.setOnClickListener { datePicker.show(supportFragmentManager, "date") }
+
         datePicker.addOnPositiveButtonClickListener { utcMillis ->
-            val localDate = Instant.ofEpochMilli(utcMillis)
-                .atZone(ZoneId.systemDefault())
-                .toLocalDate()
-            etDate.setText(localDate.toString()) // yyyy-MM-dd
+            val localDate = Instant.ofEpochMilli(utcMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+            etDate.setText(localDate.toString()) // format: yyyy-MM-dd
         }
 
-        // Save
+        // Save and cancel actions
         btnSave.setOnClickListener { saveEdits() }
-
-        // Cancel
         btnCancel.setOnClickListener { finish() }
     }
 
@@ -142,9 +171,13 @@ class EditHolidayActivity : AppCompatActivity() {
     }
 
     // -------------------------
-    // Data loading
+    // Data loading helpers
     // -------------------------
 
+    /**
+     * Loads calendar IDs for the user from 'user_calendars/{userId}' then fetches
+     * each calendar at 'calendars/{calendarId}'. Results populate calendarList.
+     */
     private fun loadUserCalendars(userId: String) {
         db.child("user_calendars").child(userId)
             .addListenerForSingleValueEvent(object : ValueEventListener {
@@ -163,37 +196,47 @@ class EditHolidayActivity : AppCompatActivity() {
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(calSnap: DataSnapshot) {
                                     calSnap.getValue(CalendarModel::class.java)?.let { cal ->
-                                        cal.calendarId = calSnap.key.toString()
+                                        cal.calendarId = calSnap.key.orEmpty()
                                         calendarList.add(cal)
                                     }
-                                    if (--remaining == 0) updateCalendarSpinner()
+                                    remaining -= 1
+                                    if (remaining <= 0) updateCalendarSpinner()
                                 }
+
                                 override fun onCancelled(error: DatabaseError) {
-                                    if (--remaining == 0) updateCalendarSpinner()
+                                    Log.w(TAG, "Failed loading calendar $id: ${error.message}")
+                                    remaining -= 1
+                                    if (remaining <= 0) updateCalendarSpinner()
                                 }
                             })
                     }
                 }
+
                 override fun onCancelled(error: DatabaseError) {
+                    Log.w(TAG, "Loading user_calendars cancelled: ${error.message}")
                     updateCalendarSpinner()
                 }
             })
     }
 
     private fun updateCalendarSpinner() {
-        val names = calendarList.map { it.title ?: "(Untitled)" }
+        val names = if (calendarList.isNotEmpty()) calendarList.map { it.title ?: "(Untitled)" } else listOf("(No calendars)")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, names)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spnCalendar.adapter = adapter
-        if (calendarList.isNotEmpty()) spnCalendar.setSelection(0)
+        if (calendarList.isNotEmpty()) {
+            spnCalendar.setSelection(0)
+        }
     }
 
+    /**
+     * Load holiday items for the given calendar (reads 'calendars/{id}/holidays')
+     */
     private fun loadHolidaysForCalendar(calendarId: String?) {
         if (calendarId.isNullOrEmpty()) {
-            holidayList.clear()
-            updateHolidaySpinner()
-            return
+            holidayList.clear(); updateHolidaySpinner(); return
         }
+
         db.child("calendars").child(calendarId).child("holidays")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snap: DataSnapshot) {
@@ -201,30 +244,32 @@ class EditHolidayActivity : AppCompatActivity() {
                     snap.children.forEach { hSnap ->
                         val h = hSnap.getValue(HolidayModel::class.java)
                         if (h != null) {
-                            h.holidayId = hSnap.key.toString()
+                            h.holidayId = hSnap.key.orEmpty()
                             holidayList.add(h)
                         }
                     }
                     updateHolidaySpinner()
                 }
+
                 override fun onCancelled(error: DatabaseError) {
-                    holidayList.clear()
-                    updateHolidaySpinner()
+                    Log.w(TAG, "Loading holidays cancelled: ${error.message}")
+                    holidayList.clear(); updateHolidaySpinner()
                 }
             })
     }
 
     private fun updateHolidaySpinner() {
-        val titles = holidayList.map { it.name ?: "(Untitled event)" }
+        val titles = if (holidayList.isNotEmpty()) holidayList.map { it.name ?: "(Untitled event)" } else listOf("(No events)")
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, titles)
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
         spnHoliday.adapter = adapter
         if (holidayList.isNotEmpty()) spnHoliday.setSelection(0)
-        // Clear fields if none
+
         if (holidayList.isEmpty()) {
             etName.setText("")
             etDesc.setText("")
             etDate.setText("")
+            btnSave.isEnabled = false
         }
     }
 
@@ -240,33 +285,18 @@ class EditHolidayActivity : AppCompatActivity() {
         val dateStr = etDate.text?.toString()?.trim().orEmpty()
         val desc = etDesc.text?.toString()?.trim().orEmpty()
 
-        if (calId.isNullOrEmpty()) {
-            Toast.makeText(this, "Select a calendar", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (holId.isNullOrEmpty()) {
-            Toast.makeText(this, "Select an event", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (title.isEmpty()) {
-            etName.error = "Title required"
-            etName.requestFocus()
-            return
-        }
-        val pickedDate = runCatching { LocalDate.parse(dateStr) }.getOrNull()
-        if (pickedDate == null) {
-            etDate.error = "Pick a valid date"
-            etDate.requestFocus()
-            return
-        }
-        val today = LocalDate.now()
-        if (pickedDate.isBefore(today)) {
-            etDate.error = "Date cannot be in the past"
-            etDate.requestFocus()
-            return
-        }
+        // Basic validation
+        if (calId.isNullOrEmpty()) { Toast.makeText(this, "Select a calendar", Toast.LENGTH_SHORT).show(); return }
+        if (holId.isNullOrEmpty()) { Toast.makeText(this, "Select an event", Toast.LENGTH_SHORT).show(); return }
+        if (title.isEmpty()) { etName.error = "Title required"; etName.requestFocus(); return }
 
-        // Build partial update (keep other fields)
+        val pickedDate = runCatching { LocalDate.parse(dateStr) }.getOrNull()
+        if (pickedDate == null) { etDate.error = "Pick a valid date"; etDate.requestFocus(); return }
+
+        val today = LocalDate.now()
+        if (pickedDate.isBefore(today)) { etDate.error = "Date cannot be in the past"; etDate.requestFocus(); return }
+
+        // Partial update map - nested property paths are supported by updateChildren
         val updates = hashMapOf<String, Any?>(
             "name" to title,
             "desc" to desc,
@@ -279,8 +309,9 @@ class EditHolidayActivity : AppCompatActivity() {
                 Toast.makeText(this, "Event updated", Toast.LENGTH_SHORT).show()
                 finish()
             }
-            .addOnFailureListener {
-                Toast.makeText(this, "Update failed", Toast.LENGTH_SHORT).show()
+            .addOnFailureListener { ex ->
+                Log.e(TAG, "Failed to update holiday $holId", ex)
+                Toast.makeText(this, "Update failed: ${ex.message}", Toast.LENGTH_SHORT).show()
             }
     }
 }
