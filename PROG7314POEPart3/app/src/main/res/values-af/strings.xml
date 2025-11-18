@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Hierdie dokument is outomaties vertaal deur generatiewe KI (ChatGPT) op 2025-11-18.
+    Bron: https://chat.openai.com/
+-->
+
+<resources>
+
+    <!-- App -->
+    <string name="app_name">ChronoSync</string>
+    <string name="app_tagline">Jou tyd, georganiseer</string>
+
+    <!-- Navigation (bottom nav / tabs) -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_mine">My kalenders</string>
+    <string name="nav_meetings">Vergaderings</string>
+    <string name="nav_sharing">Deling</string>
+    <string name="nav_settings">Instellings</string>
+    <string name="nav_calendar">Kalender</string>
+
+    <!-- Auth / login / register -->
+    <string name="auth_login">Meld aan</string>
+    <string name="auth_register">Regsitreer</string>
+    <string name="auth_register_title">Skep jou rekening</string>
+    <string name="auth_create_account">Skep rekening</string>
+    <string name="auth_logo_description">Toepassing-logo</string>
+    <string name="auth_google_logo_description">Google-logo</string>
+    <string name="auth_continue_google">Gaan voort met Google</string>
+    <string name="auth_biometric">Gebruik biometriese verifikasie</string>
+
+    <string name="auth_first_name">Voornaam</string>
+    <string name="auth_surname">Van</string>
+    <string name="auth_date_of_birth">Geboortedatum</string>
+    <string name="auth_country">Land</string>
+
+    <string name="auth_email">E-pos</string>
+    <string name="auth_password">Wagwoord</string>
+    <string name="auth_confirm_password">Bevestig wagwoord</string>
+
+    <string name="auth_login_button">Meld aan</string>
+    <string name="auth_signup_button">Teken in</string>
+
+    <string name="auth_go_to_signup">Skep ’n rekening</string>
+    <string name="auth_go_to_login">Het jy reeds ’n rekening? Meld aan</string>
+
+    <string name="auth_logo_content_desc">Logo</string>
+
+    <!-- Offline / home -->
+    <string name="offline_banner">📵 Vanlynmodus - Beperkte funksionaliteit</string>
+    <string name="status_offline">Vanlyn</string>
+
+    <!-- Common field labels / hints -->
+    <string name="field_title">Titel</string>
+    <string name="field_description">Beskrywing</string>
+    <string name="field_calendar">Kalender</string>
+    <string name="field_event">Gebeurtenis</string>
+    <string name="field_date">Datum</string>
+    <string name="field_start_time">Begintyd</string>
+    <string name="field_end_time">Eindtyd</string>
+    <string name="field_repeats">Herhaal</string>
+
+    <string name="field_email_generic">E-pos</string>
+    <string name="field_current_password">Huidige wagwoord</string>
+    <string name="field_new_password">Nuwe wagwoord</string>
+    <string name="field_confirm_new_password">Bevestig nuwe wagwoord</string>
+
+    <string name="field_participant_emails">Deelnemerse e-posse (komma-geskei)</string>
+    <string name="field_search_calendars">Soek kalenders…</string>
+    <string name="field_enter_user_email">Voer gebruiker se e-pos in</string>
+    <string name="field_share_email_hint">email@voorbeeld.com</string>
+
+    <!-- Generic actions -->
+    <string name="action_create">Skep</string>
+    <string name="action_reset">Herstel</string>
+    <string name="action_cancel">Kanselleer</string>
+    <string name="action_save">Stoor</string>
+    <string name="action_save_changes">Stoor veranderinge</string>
+    <string name="action_delete">Vee uit</string>
+    <string name="action_share">Deel</string>
+    <string name="action_remove">Verwyder</string>
+    <string name="action_edit">Wysig</string>
+    <string name="action_add_event">Voeg gebeurtenis by</string>
+
+    <string name="action_change_password">Verander wagwoord</string>
+    <string name="action_logout">Meld af</string>
+    <string name="action_delete_account">Vee rekening uit</string>
+    <string name="action_leave_calendar">Verlaat kalender</string>
+
+    <!-- Calendar - create / edit / delete -->
+    <string name="create_calendar_screen_title">Skep kalender</string>
+    <string name="create_calendar_button">Skep</string>
+    <string name="calendar_create">Skep kalender</string>
+    <string name="calendar_title">Kalendertitel</string>
+    <string name="calendar_description">Kalenderbeskrywing</string>
+
+    <string name="edit_calendar_screen_title">Wysig kalender</string>
+    <string name="calendar_edit">Wysig kalender</string>
+    <string name="calendar_select">Kies kalender</string>
+    <string name="calendar_select_hint">Kies kalender</string>
+
+    <string name="delete_calendar_screen_title">Vee kalender uit</string>
+    <string name="delete_calendar_button">Vee kalender uit</string>
+    <string name="calendar_delete">Vee kalender uit</string>
+
+    <string name="calendar_no_calendars">Geen kalenders beskikbaar nie</string>
+    <string name="calendar_title_sample">Kalendertitel</string>
+    <string name="calendar_description_sample">Kalenderbeskrywing</string>
+
+    <!-- Events / holidays -->
+    <string name="create_event_screen_title">Skep gebeurtenis</string>
+    <string name="edit_event_screen_title">Wysig gebeurtenis</string>
+    <string name="event_create">Skep gebeurtenis</string>
+    <string name="event_edit">Wysig gebeurtenis</string>
+    <string name="event_title">Gebeurtenistitel</string>
+    <string name="event_label">Gebeurtenisnaam</string>
+    <string name="event_date">Gebeurtenisdatum</string>
+    <string name="event_start_time">Begintyd</string>
+    <string name="event_end_time">Eindtyd</string>
+    <string name="event_description">Beskrywing</string>
+    <string name="event_repeats">Herhaal</string>
+    <string name="event_add">Voeg gebeurtenis by</string>
+    <string name="event_search_hint">Soek gebeurtenisse</string>
+    <string name="event_none">Geen gebeurtenisse</string>
+    <string name="events_title">Gebeurtenisse</string>
+
+    <string name="holiday_name_sample">Vakansiedagnaam</string>
+    <string name="holiday_date_sample">2025-01-01</string>
+    <string name="holiday_type_sample">Tipe: Nasionale Vakansiedag</string>
+
+    <!-- Event list / cards -->
+    <string name="event_card_title_sample">Gebeurtenistitel</string>
+    <string name="event_card_when_sample">2025-10-08  09:00 – 10:00</string>
+    <string name="event_card_desc_sample">Beskrywing…</string>
+
+    <!-- Calendar detail -->
+    <string name="calendar_detail_title_sample">(Titel)</string>
+    <string name="calendar_detail_description_sample">(Beskrywing)</string>
+    <string name="calendar_events_header">Gebeurtenisse</string>
+    <string name="calendar_no_events_yet">Nog geen gebeurtenisse nie</string>
+
+    <!-- Dashboard / slots -->
+    <string name="dashboard_time_sample">12:34 — Di, 07 Okt</string>
+    <string name="dashboard_settings_content_desc">Instellings</string>
+
+    <string name="slot_empty_title">Geen kalender gekies nie</string>
+    <string name="slot_empty_subtitle">Kies ’n kalender om jou volgende gebeurtenis hier te sien</string>
+
+    <!-- Month view -->
+    <string name="month_prev_content_desc">Vorige maand</string>
+    <string name="month_next_content_desc">Volgende maand</string>
+    <string name="month_title_sample">Oktober 2025</string>
+
+    <string name="month_pick_single">Kies enkel</string>
+    <string name="month_pick_from_dashboard">Kies vanaf dashboard</string>
+
+    <string name="dow_sun">So</string>
+    <string name="dow_mon">Ma</string>
+    <string name="dow_tue">Di</string>
+    <string name="dow_wed">Wo</string>
+    <string name="dow_thu">Do</string>
+    <string name="dow_fri">Vr</string>
+    <string name="dow_sat">Sa</string>
+
+    <string name="day_header_sample">Wo, 08 Okt</string>
+    <string name="day_no_events">Geen gebeurtenisse nie</string>
+
+    <!-- Meetings -->
+    <string name="create_meeting_screen_title">Skep vergadering</string>
+    <string name="create_meeting_button">Skep vergadering</string>
+    <string name="meeting_create">Skep vergadering</string>
+    <string name="meeting_title">Vergaderingstitel</string>
+    <string name="meeting_description_optional">Beskrywing (opsioneel)</string>
+    <string name="meeting_participant_emails_hint">Deelnemerse e-posse (komma-geskei)</string>
+
+    <string name="meeting_title_sample">Vergaderingstitel</string>
+    <string name="meeting_description_sample">Vergaderingsbeskrywing</string>
+    <string name="meeting_participants_label">Deelnemers</string>
+
+    <string name="meeting_empty_list">Nog geen vergaderings nie</string>
+    <string name="meeting_fab_content_desc">Skep vergadering</string>
+
+    <string name="meeting_accept">Aanvaar</string>
+    <string name="meeting_decline">Weier</string>
+
+    <string name="meeting_date_sample">15 Jan, 2024</string>
+    <string name="meeting_time_sample">10:00 - 11:00</string>
+    <string name="meeting_participant_count_sample">3 deelnemers</string>
+
+    <string name="meeting_datetime_sample">2025-11-20 om 14:00</string>
+    <string name="meeting_participant_email_sample">deelnemer@voorbeeld.com</string>
+    <string name="meeting_status_accepted_sample">✓ Aanvaar</string>
+
+    <!-- Calendar list items -->
+    <string name="calendar_item_title_sample">Titel</string>
+    <string name="calendar_item_description_sample">Beskrywing</string>
+
+    <!-- Holiday list item -->
+    <string name="holiday_item_name_sample">Vakansiedagnaam</string>
+    <string name="holiday_item_date_sample">2025-01-01</string>
+    <string name="holiday_item_type_sample">Tipe: Nasionale Vakansiedag</string>
+
+    <!-- Invite cards (calendar sharing) -->
+    <string name="invite_calendar_title_sample">Kalendertitel</string>
+    <string name="invite_calendar_owner_sample">Uitgenooi deur owner@voorbeeld.com</string>
+
+    <!-- Meeting invite card -->
+    <string name="invite_meeting_title_sample">Vergaderingstitel</string>
+    <string name="invite_meeting_creator_sample">Uitgenooi deur iemand@voorbeeld.com</string>
+    <string name="invite_meeting_datetime_sample">2025-11-20 om 14:00</string>
+
+    <!-- Sharing / invites (calendars) -->
+    <string name="share_dialog_label_email">Voer e-pos in om te deel</string>
+    <string name="share_section_shared_with">Gedeel met</string>
+
+    <string name="share_no_shared_users">Geen gedeelde gebruikers nie</string>
+    <string name="share_no_calendars_yet">Nog geen kalenders nie</string>
+    <string name="share_no_pending_invites">Geen hangende uitnodigings nie</string>
+    <string name="share_no_shared_calendars">Geen gedeelde kalenders nie</string>
+
+    <string name="share_invited_by_sample">Uitgenooi deur owner@voorbeeld.com</string>
+    <string name="share_shared_by_sample">Gedeel deur owner@voorbeeld.com</string>
+
+    <string name="share_owner_sample">Eienaar: owner@voorbeeld.com</string>
+    <string name="share_your_permissions_sample">Jou regte: Sien slegs</string>
+    <string name="share_permissions_sample">Kan wysig, kan deel</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Instellings</string>
+    <string name="settings_appearance_header">Voorkoms</string>
+    <string name="settings_dark_mode">Donker modus</string>
+
+    <string name="settings_account_header">Rekening</string>
+    <string name="settings_more_header">Meer</string>
+    <string name="settings_more_body">Kennisgewings • Taal • ens.</string>
+
+    <!-- Instellings: taal -->
+    <string name="settings_language_header">Taal</string>
+    <string name="settings_language_af">Afrikaans</string>
+
+
+    <!-- TOASTS - Success -->
+    <string name="toast_login_success">Aangemeld</string>
+    <string name="toast_logout_success">Afgemeld</string>
+    <string name="toast_account_deleted">Rekening uitgevee</string>
+    <string name="toast_password_changed">Wagwoord suksesvol opgedateer</string>
+    <string name="toast_meeting_created">Vergadering suksesvol geskep!</string>
+    <string name="toast_meeting_accepted">Vergadering aanvaar! Kyk in My Vergaderings</string>
+    <string name="toast_meeting_declined">Vergadering geweier</string>
+    <string name="toast_calendar_created">Kalender geskep</string>
+    <string name="toast_changes_saved">Veranderinge gestoor</string>
+
+    <!-- TOASTS - Errors -->
+    <string name="toast_email_password_required">Voer asseblief e-pos en wagwoord in</string>
+    <string name="toast_all_fields_required">Alle velde is vereis</string>
+    <string name="toast_fill_all_fields">Vul alle velde in</string>
+    <string name="toast_passwords_mismatch">Wagwoorde stem nie ooreen nie</string>
+    <string name="toast_password_too_short">Nuwe wagwoord moet minstens 6 karakters wees</string>
+    <string name="toast_not_logged_in">Nie aangemeld nie</string>
+    <string name="toast_no_user_signed_in">Geen gebruiker aangemeld nie</string>
+    <string name="toast_no_signed_in_email_user">Geen aangemelde e-posgebruiker nie</string>
+    <string name="toast_invalid_meeting">Ongeldige vergadering</string>
+    <string name="toast_enter_meeting_title">Voer asseblief ’n vergaderingstitel in</string>
+    <string name="toast_select_date">Kies asseblief ’n datum</string>
+    <string name="toast_select_start_time">Kies asseblief ’n begintyd</string>
+    <string name="toast_select_end_time">Kies asseblief ’n eindtyd</string>
+    <string name="toast_end_time_after_start">Eindtyd moet ná die begintyd wees</string>
+    <string name="toast_enter_participant_email">Voer ten minste een deelnemerse e-pos in</string>
+    <string name="toast_enter_valid_emails">Voer asseblief geldige deelnemerse e-posse in</string>
+
+    <!-- TOASTS - Info -->
+    <string name="toast_offline_login">Vanlyn aangemeld as %s</string>
+    <string name="toast_offline_login_failed">Vanlyn-aanmelding het misluk. Koppel asseblief aan die internet om met hierdie rekening aan te meld.</string>
+
+    <!-- Dialog messages -->
+    <string name="dialog_delete_account_title">Vee rekening uit</string>
+    <string name="dialog_delete_account_message">Hierdie aksie kan nie ongedaan gemaak word nie</string>
+    <string name="dialog_change_password_title">Verander wagwoord</string>
+    <string name="dialog_button_delete">Vee uit</string>
+    <string name="dialog_button_cancel">Kanselleer</string>
+    <string name="dialog_button_update">Opdateer</string>
+
+    <!-- Error messages -->
+    <string name="error_reauth_failed">Herauthentisering het misluk. Probeer asseblief weer.</string>
+    <string name="error_delete_account_reauth_required">Heraanmelding mag vereis word.</string>
+    <string name="error_update_password_failed">Wagwoordopdatering het misluk</string>
+    <string name="error_generic">Fout: %s</string>
+
+    <!-- Empty states -->
+    <string name="empty_no_pending_invites">Geen hangende vergaderingsuitnodigings nie</string>
+
+    <!-- Additional linked strings -->
+    <string name="meeting_description">Vergaderingsbeskrywing</string>
+    <string name="meeting_participants">Deelnemers</string>
+
+    <!-- activity_register -->
+    <string name="auth_last_name">Van</string>
+    <string name="auth_sign_up">Teken in</string>
+    <string name="auth_already_have_account">Het jy reeds ’n rekening? Meld aan</string>
+
+    <!-- dialog_change_password -->
+    <string name="settings_current_password">Huidige wagwoord</string>
+    <string name="settings_new_password">Nuwe wagwoord</string>
+    <string name="settings_confirm_new_password">Bevestig nuwe wagwoord</string>
+
+    <!-- dialog_share_prompt -->
+    <string name="share_prompt_label">Voer e-pos in om te deel</string>
+    <string name="share_email_example">email@voorbeeld.com</string>
+
+    <!-- fragment_calendar_list -->
+    <string name="calendars_search_hint">Soek kalenders…</string>
+    <string name="calendar_none">Nog geen kalenders nie</string>
+
+    <!-- fragment_calendars_month -->
+    <string name="calendar_prev_month">Vorige maand</string>
+    <string name="calendar_month_sample">Oktober 2025</string>
+    <string name="calendar_next_month">Volgende maand</string>
+
+    <string name="calendar_pick_single">Kies enkel</string>
+    <string name="calendar_pick_from_dashboard">Kies vanaf dashboard</string>
+
+    <!-- Day-of-week -->
+    <string name="calendar_dow_sun">So</string>
+    <string name="calendar_dow_mon">Ma</string>
+    <string name="calendar_dow_tue">Di</string>
+    <string name="calendar_dow_wed">Wo</string>
+    <string name="calendar_dow_thu">Do</string>
+    <string name="calendar_dow_fri">Vr</string>
+    <string name="calendar_dow_sat">Sa</string>
+
+    <string name="calendar_day_sample">Wo, 08 Okt</string>
+
+    <!-- Meeting invites -->
+    <string name="meeting_invites_empty">Geen hangende vergaderingsuitnodigings nie</string>
+    <string name="meeting_none">Nog geen vergaderings nie</string>
+
+    <!-- Settings -->
+    <string name="settings_appearance">Voorkoms</string>
+    <string name="settings_account">Rekening</string>
+    <string name="settings_change_password">Verander wagwoord</string>
+    <string name="settings_logout">Meld af</string>
+    <string name="settings_delete_account">Vee rekening uit</string>
+    <string name="settings_more">Meer</string>
+    <string name="settings_more_placeholder">Kennisgewings • Taal • ens.</string>
+
+    <!-- Sharing / invites -->
+    <string name="share_invites_empty">Geen hangende uitnodigings nie</string>
+    <string name="share_leave_calendar">Verlaat kalender</string>
+    <string name="share_email">Voer gebruiker se e-pos in</string>
+
+    <!-- Holiday placeholders -->
+    <string name="holiday_name_placeholder">Vakansiedagnaam</string>
+    <string name="holiday_type_national">Tipe: Nasionale Vakansiedag</string>
+
+    <!-- Event card placeholders -->
+    <string name="event_when_sample">2025-10-08  09:00 – 10:00</string>
+    <string name="event_description_placeholder">Beskrywing…</string>
+
+    <!-- Navigation graph titles -->
+    <string name="nav_calendars">Kalenders</string>
+    <string name="title_custom">Pasgemaak</string>
+    <string name="title_shared">Gedeel</string>
+
+    <!-- Dashboard / next event -->
+    <string name="no_upcoming">Geen komende gebeurtenisse nie</string>
+
+    <!-- Dashboard slot picker -->
+    <string name="picker_public_holidays">Openbare vakansiedae</string>
+    <string name="picker_custom_calendar">Pasgemaakte kalender</string>
+
+</resources>

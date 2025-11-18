@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- App -->
+    <string name="app_name">ChronoSync</string>
+    <string name="app_tagline">Your time, organized</string>
+
+    <!-- Navigation (bottom nav / tabs) -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_mine">My calendars</string>
+    <string name="nav_meetings">Meetings</string>
+    <string name="nav_sharing">Sharing</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_calendar">Calendar</string>
+
+    <!-- Auth / login / register -->
+    <string name="auth_login">Log in</string>
+    <string name="auth_register">Register</string>
+    <string name="auth_register_title">Create your account</string>
+    <string name="auth_create_account">Create account</string>
+    <string name="auth_logo_description">App logo</string>
+    <string name="auth_google_logo_description">Google logo</string>
+    <string name="auth_continue_google">Continue with Google</string>
+    <string name="auth_biometric">Use biometric authentication</string>
+
+    <string name="auth_first_name">First name</string>
+    <string name="auth_surname">Surname</string>
+    <string name="auth_date_of_birth">Date of birth</string>
+    <string name="auth_country">Country</string>
+
+    <string name="auth_email">Email</string>
+    <string name="auth_password">Password</string>
+    <string name="auth_confirm_password">Confirm password</string>
+
+    <string name="auth_login_button">Log in</string>
+    <string name="auth_signup_button">Sign up</string>
+
+    <string name="auth_go_to_signup">Create an account</string>
+    <string name="auth_go_to_login">Already have an account? Sign in</string>
+
+    <string name="auth_logo_content_desc">Logo</string>
+
+    <!-- Offline / home -->
+    <string name="offline_banner">📵 Offline Mode - Limited functionality</string>
+    <string name="status_offline">Offline</string>
+
+    <!-- Common field labels / hints -->
+    <string name="field_title">Title</string>
+    <string name="field_description">Description</string>
+    <string name="field_calendar">Calendar</string>
+    <string name="field_event">Event</string>
+    <string name="field_date">Date</string>
+    <string name="field_start_time">Start time</string>
+    <string name="field_end_time">End time</string>
+    <string name="field_repeats">Repeats</string>
+
+    <string name="field_email_generic">Email</string>
+    <string name="field_current_password">Current password</string>
+    <string name="field_new_password">New password</string>
+    <string name="field_confirm_new_password">Confirm new password</string>
+
+    <string name="field_participant_emails">Participant emails (comma-separated)</string>
+    <string name="field_search_calendars">Search calendars…</string>
+    <string name="field_enter_user_email">Enter user email</string>
+    <string name="field_share_email_hint">email@example.com</string>
+
+    <!-- Generic actions -->
+    <string name="action_create">Create</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_save">Save</string>
+    <string name="action_save_changes">Save changes</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_share">Share</string>
+    <string name="action_remove">Remove</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_add_event">Add event</string>
+
+    <string name="action_change_password">Change password</string>
+    <string name="action_logout">Log out</string>
+    <string name="action_delete_account">Delete account</string>
+    <string name="action_leave_calendar">Leave calendar</string>
+
+    <!-- Calendar - create / edit / delete -->
+    <string name="create_calendar_screen_title">Create calendar</string>
+    <string name="create_calendar_button">Create</string>
+    <string name="calendar_create">Create calendar</string>
+    <string name="calendar_title">Calendar title</string>
+    <string name="calendar_description">Calendar description</string>
+
+    <string name="edit_calendar_screen_title">Edit calendar</string>
+    <string name="calendar_edit">Edit calendar</string>
+    <string name="calendar_select">Select calendar</string>
+    <string name="calendar_select_hint">Select calendar</string>
+
+    <string name="delete_calendar_screen_title">Delete calendar</string>
+    <string name="delete_calendar_button">Delete calendar</string>
+    <string name="calendar_delete">Delete calendar</string>
+
+    <string name="calendar_no_calendars">No calendars yet</string>
+    <string name="calendar_title_sample">Calendar title</string>
+    <string name="calendar_description_sample">Calendar description</string>
+
+    <!-- Events / holidays -->
+    <string name="create_event_screen_title">Create event</string>
+    <string name="edit_event_screen_title">Edit event</string>
+    <string name="event_create">Create event</string>
+    <string name="event_edit">Edit event</string>
+    <string name="event_title">Event title</string>
+    <string name="event_label">Event name</string>
+    <string name="event_date">Event date</string>
+    <string name="event_start_time">Start time</string>
+    <string name="event_end_time">End time</string>
+    <string name="event_description">Description</string>
+    <string name="event_repeats">Repeats</string>
+    <string name="event_add">Add event</string>
+    <string name="event_search_hint">Search events</string>
+    <string name="event_none">No events</string>
+    <string name="events_title">Events</string>
+
+    <string name="holiday_name_sample">Holiday name</string>
+    <string name="holiday_date_sample">2025-01-01</string>
+    <string name="holiday_type_sample">Type: National Holiday</string>
+
+    <!-- Event list / cards -->
+    <string name="event_card_title_sample">Event title</string>
+    <string name="event_card_when_sample">2025-10-08  09:00 – 10:00</string>
+    <string name="event_card_desc_sample">Description…</string>
+
+    <!-- Calendar detail -->
+    <string name="calendar_detail_title_sample">(Title)</string>
+    <string name="calendar_detail_description_sample">(Description)</string>
+    <string name="calendar_events_header">Events</string>
+    <string name="calendar_no_events_yet">No events yet</string>
+
+    <!-- Dashboard / slots -->
+    <string name="dashboard_time_sample">12:34 — Tue, 07 Oct</string>
+    <string name="dashboard_settings_content_desc">Settings</string>
+
+    <string name="slot_empty_title">No calendar selected</string>
+    <string name="slot_empty_subtitle">Pick a calendar to see your next event here</string>
+
+    <!-- Month view -->
+    <string name="month_prev_content_desc">Previous month</string>
+    <string name="month_next_content_desc">Next month</string>
+    <string name="month_title_sample">October 2025</string>
+
+    <string name="month_pick_single">Pick single</string>
+    <string name="month_pick_from_dashboard">Pick from dashboard</string>
+
+    <string name="dow_sun">Sun</string>
+    <string name="dow_mon">Mon</string>
+    <string name="dow_tue">Tue</string>
+    <string name="dow_wed">Wed</string>
+    <string name="dow_thu">Thu</string>
+    <string name="dow_fri">Fri</string>
+    <string name="dow_sat">Sat</string>
+
+    <string name="day_header_sample">Wed, 08 Oct</string>
+    <string name="day_no_events">No events</string>
+
+    <!-- Meetings -->
+    <string name="create_meeting_screen_title">Create meeting</string>
+    <string name="create_meeting_button">Create meeting</string>
+    <string name="meeting_create">Create meeting</string>
+    <string name="meeting_title">Meeting title</string>
+    <string name="meeting_description_optional">Description (optional)</string>
+    <string name="meeting_participant_emails_hint">Participant emails (comma-separated)</string>
+
+    <string name="meeting_title_sample">Meeting title</string>
+    <string name="meeting_description_sample">Meeting description</string>
+    <string name="meeting_participants_label">Participants</string>
+
+    <string name="meeting_empty_list">No meetings yet</string>
+    <string name="meeting_fab_content_desc">Create meeting</string>
+
+    <string name="meeting_accept">Accept</string>
+    <string name="meeting_decline">Decline</string>
+
+    <string name="meeting_date_sample">Jan 15, 2024</string>
+    <string name="meeting_time_sample">10:00 - 11:00</string>
+    <string name="meeting_participant_count_sample">3 participants</string>
+
+    <string name="meeting_datetime_sample">2025-11-20 at 14:00</string>
+    <string name="meeting_participant_email_sample">participant@example.com</string>
+    <string name="meeting_status_accepted_sample">✓ Accepted</string>
+
+    <!-- Calendar list items -->
+    <string name="calendar_item_title_sample">Title</string>
+    <string name="calendar_item_description_sample">Description</string>
+
+    <!-- Holiday list item -->
+    <string name="holiday_item_name_sample">Holiday name</string>
+    <string name="holiday_item_date_sample">2025-01-01</string>
+    <string name="holiday_item_type_sample">Type: National Holiday</string>
+
+    <!-- Invite cards (calendar sharing) -->
+    <string name="invite_calendar_title_sample">Calendar title</string>
+    <string name="invite_calendar_owner_sample">Invited by owner@example.com</string>
+
+    <!-- Meeting invite card -->
+    <string name="invite_meeting_title_sample">Meeting title</string>
+    <string name="invite_meeting_creator_sample">Invited by someone@example.com</string>
+    <string name="invite_meeting_datetime_sample">2025-11-20 at 14:00</string>
+
+    <!-- Sharing / invites (calendars) -->
+    <string name="share_dialog_label_email">Enter email to share with</string>
+    <string name="share_section_shared_with">Shared with</string>
+
+    <string name="share_no_shared_users">No shared users</string>
+    <string name="share_no_calendars_yet">No calendars yet</string>
+    <string name="share_no_pending_invites">No pending invites</string>
+    <string name="share_no_shared_calendars">No shared calendars</string>
+
+    <string name="share_invited_by_sample">Invited by owner@example.com</string>
+    <string name="share_shared_by_sample">Shared by owner@example.com</string>
+
+    <string name="share_owner_sample">Owner: owner@example.com</string>
+    <string name="share_your_permissions_sample">Your permissions: View only</string>
+    <string name="share_permissions_sample">Can edit, can share</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+
+    <string name="settings_appearance_header">Appearance</string>
+    <string name="settings_dark_mode">Dark mode</string>
+
+    <string name="settings_account_header">Account</string>
+    <string name="settings_more_header">More</string>
+    <string name="settings_more_body">Notifications • Language • etc</string>
+
+    <!-- ========================================== -->
+    <!-- TOAST MESSAGES - Success -->
+    <!-- ========================================== -->
+    <string name="toast_login_success">Login successful</string>
+    <string name="toast_logout_success">Logged out</string>
+    <string name="toast_account_deleted">Account deleted</string>
+    <string name="toast_password_changed">Password updated successfully</string>
+    <string name="toast_meeting_created">Meeting created successfully!</string>
+    <string name="toast_meeting_accepted">Meeting accepted! Check \'My Meetings\' tab</string>
+    <string name="toast_meeting_declined">Meeting declined</string>
+    <string name="toast_calendar_created">Calendar created</string>
+    <string name="toast_changes_saved">Changes saved</string>
+
+    <!-- ========================================== -->
+    <!-- TOAST MESSAGES - Errors -->
+    <!-- ========================================== -->
+    <string name="toast_email_password_required">Please enter email and password</string>
+    <string name="toast_all_fields_required">All fields are required</string>
+    <string name="toast_fill_all_fields">Fill in all fields</string>
+    <string name="toast_passwords_mismatch">Passwords do not match</string>
+    <string name="toast_password_too_short">New password must be at least 6 characters</string>
+    <string name="toast_not_logged_in">Not logged in</string>
+    <string name="toast_no_user_signed_in">No user signed in</string>
+    <string name="toast_no_signed_in_email_user">No signed-in email user</string>
+    <string name="toast_invalid_meeting">Invalid meeting</string>
+    <string name="toast_enter_meeting_title">Please enter a meeting title</string>
+    <string name="toast_select_date">Please select a date</string>
+    <string name="toast_select_start_time">Please select a start time</string>
+    <string name="toast_select_end_time">Please select an end time</string>
+    <string name="toast_end_time_after_start">End time must be after start time</string>
+    <string name="toast_enter_participant_email">Please enter at least one participant email</string>
+    <string name="toast_enter_valid_emails">Please enter valid participant emails</string>
+
+    <!-- ========================================== -->
+    <!-- TOAST MESSAGES - Info -->
+    <!-- ========================================== -->
+    <string name="toast_offline_login">Logged in offline as %s</string>
+    <string name="toast_offline_login_failed">Offline login failed. Please connect to internet to login with this account.</string>
+
+    <!-- ========================================== -->
+    <!-- DIALOG MESSAGES -->
+    <!-- ========================================== -->
+    <string name="dialog_delete_account_title">Delete account</string>
+    <string name="dialog_delete_account_message">This action cannot be undone</string>
+    <string name="dialog_change_password_title">Change password</string>
+    <string name="dialog_button_delete">Delete</string>
+    <string name="dialog_button_cancel">Cancel</string>
+    <string name="dialog_button_update">Update</string>
+
+    <!-- ========================================== -->
+    <!-- ERROR MESSAGES (from Firebase/Backend) -->
+    <!-- ========================================== -->
+    <string name="error_reauth_failed">Re-authentication failed. Please try again.</string>
+    <string name="error_delete_account_reauth_required">Re-login may be required.</string>
+    <string name="error_update_password_failed">Password update failed</string>
+    <string name="error_generic">Error: %s</string>
+
+    <!-- ========================================== -->
+    <!-- EMPTY STATE MESSAGES -->
+    <!-- ========================================== -->
+    <string name="empty_no_pending_invites">No pending meeting invites</string>
+
+    <!-- ===== Missing strings wired from layouts ===== -->
+
+    <!-- activity_meeting_detail -->
+    <string name="meeting_description">Meeting description</string>
+    <string name="meeting_participants">Participants</string>
+
+    <!-- activity_register -->
+    <string name="auth_last_name">Surname</string>
+    <string name="auth_sign_up">Sign up</string>
+    <string name="auth_already_have_account">Already have an account? Sign in</string>
+
+    <!-- dialog_change_password -->
+    <string name="settings_current_password">Current password</string>
+    <string name="settings_new_password">New password</string>
+    <string name="settings_confirm_new_password">Confirm new password</string>
+
+    <!-- dialog_share_prompt -->
+    <string name="share_prompt_label">Enter email to share with</string>
+    <string name="share_email_example">email@example.com</string>
+
+    <!-- fragment_calendar_list -->
+    <string name="calendars_search_hint">Search calendars…</string>
+    <string name="calendar_none">No calendars yet</string>
+
+    <!-- fragment_calendars_month (month nav + labels) -->
+    <string name="calendar_prev_month">Previous month</string>
+    <string name="calendar_month_sample">October 2025</string>
+    <string name="calendar_next_month">Next month</string>
+
+    <string name="calendar_pick_single">Pick single</string>
+    <string name="calendar_pick_from_dashboard">Pick from dashboard</string>
+
+    <!-- Day-of-week labels used with calendar_ prefix -->
+    <string name="calendar_dow_sun">Sun</string>
+    <string name="calendar_dow_mon">Mon</string>
+    <string name="calendar_dow_tue">Tue</string>
+    <string name="calendar_dow_wed">Wed</string>
+    <string name="calendar_dow_thu">Thu</string>
+    <string name="calendar_dow_fri">Fri</string>
+    <string name="calendar_dow_sat">Sat</string>
+
+
+    <!-- ===== Extra strings to match layouts / nav_graph ===== -->
+
+    <!-- Month/day sample used in fragment_calendars_month -->
+    <string name="calendar_day_sample">Wed, 08 Oct</string>
+
+    <!-- Meeting invites / lists -->
+    <string name="meeting_invites_empty">No pending meeting invites</string>
+    <string name="meeting_none">No meetings yet</string>
+
+    <!-- Settings labels matching fragment_settings.xml -->
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_account">Account</string>
+    <string name="settings_change_password">Change password</string>
+    <string name="settings_logout">Log out</string>
+    <string name="settings_delete_account">Delete account</string>
+    <string name="settings_more">More</string>
+    <string name="settings_more_placeholder">Notifications • Language • etc</string>
+
+    <!-- Settings: language -->
+    <string name="settings_language_header">Language</string>
+    <string name="settings_language_af">Afrikaans</string>
+
+
+    <!-- Sharing / invites fragments -->
+    <string name="share_invites_empty">No pending invites</string>
+    <string name="share_leave_calendar">Leave calendar</string>
+    <string name="share_email">Enter users email</string>
+
+    <!-- Holiday item placeholders -->
+    <string name="holiday_name_placeholder">Holiday Name</string>
+    <string name="holiday_type_national">Type: National Holiday</string>
+
+    <!-- Event card placeholders -->
+    <string name="event_when_sample">2025-10-08  09:00 – 10:00</string>
+    <string name="event_description_placeholder">Description…</string>
+
+    <!-- Navigation graph titles -->
+    <string name="nav_calendars">Calendars</string>
+    <string name="title_custom">Custom</string>
+    <string name="title_shared">Shared</string>
+
+    <!-- Dashboard / next event text -->
+    <string name="no_upcoming">No upcoming events</string>
+
+    <!-- Dashboard slot picker options -->
+    <string name="picker_public_holidays">Public holidays</string>
+    <string name="picker_custom_calendar">Custom calendar</string>
+
+
+
+</resources>

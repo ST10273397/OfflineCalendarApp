@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="?android:attr/colorBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="@dimen/pad_screen">
+
+        <TextView
+            android:id="@+id/titleCreate"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/calendar_create"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-condensed"
+            android:textColor="?attr/colorOnBackground"
+            android:paddingBottom="@dimen/space_4" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Prog.TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:boxBackgroundMode="outline"
+            app:boxStrokeColor="?attr/colorOutline">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_Title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/calendar_title" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Space
+            android:layout_width="1dp"
+            android:layout_height="@dimen/space_3" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Prog.TextInputLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:boxBackgroundMode="outline"
+            app:boxStrokeColor="?attr/colorOutline">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/et_desc"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/calendar_description" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <Space
+            android:layout_width="1dp"
+            android:layout_height="@dimen/space_6" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_update"
+                style="@style/Widget.Material3.Button"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/action_create"
+                app:cornerRadius="@dimen/radius_m"
+                app:backgroundTint="?attr/colorPrimary"
+                android:textColor="?attr/colorOnPrimary" />
+
+            <Space
+                android:layout_width="@dimen/space_2"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_cancel"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/action_cancel"
+                app:cornerRadius="@dimen/radius_m"
+                app:strokeColor="?attr/colorOutline"
+                app:strokeWidth="1dp"
+                app:backgroundTint="?attr/colorSurface"
+                android:textColor="?attr/colorOnSurface" />
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>
